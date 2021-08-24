@@ -1,0 +1,18 @@
+{
+  "name": "datasette-app",
+  "version": "0.1.0",
+  "description": "An Electron app that wraps Datasette",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": "https://github.com/simonw/datasette.app",
+  "keywords": [
+    "Electron"
+  ],
+  "author": "Simon Willison",
+  "license": "Apache 2",
+  "devDependencies": {
+    "electron": "^13.2.1"
+  }
+}
