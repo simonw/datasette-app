@@ -8,21 +8,28 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Cache node modules
+      - name: Configure Node caching
         uses: actions/cache@v2
         env:
           cache-name: cache-node-modules
         with:
-          # npm cache files are stored in `~/.npm` on Linux/macOS
           path: ~/.npm
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
             ${{ runner.os }}-
-
-      - name: Install Dependencies
+      - uses: actions/cache@v2
+        name: Configure pip caching
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install Node dependencies
         run: npm install
-
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
       - name: Run tests
         run: npm test
