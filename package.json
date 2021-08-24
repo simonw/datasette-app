@@ -1,11 +1,20 @@
 {
   "name": "datasette-app",
   "version": "0.1.0",
+  "productName": "Datasette",
   "description": "An Electron app that wraps Datasette",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "mocha"
+    "test": "mocha",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "io.datasette.app",
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    }
   },
   "repository": "https://github.com/simonw/datasette.app",
   "keywords": [
@@ -15,6 +24,7 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "electron": "^13.2.1",
+    "electron-builder": "^22.11.7",
     "mocha": "^9.1.0",
     "spectron": "^15.0.0"
   },
