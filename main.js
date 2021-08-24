@@ -11,7 +11,11 @@ function createWindow() {
     }, */
   });
   // Start Python Datasette process
-  var datasette = cp.spawn('datasette', ['--memory', '--port', '8024']);
+  let datasette = cp.spawn('datasette', ['--memory', '--port', '8024']);
+  datasette.on('error', (err) => {
+    console.error('Failed to start datasette');
+    app.quit();
+  });
 
   mainWindow.webContents.on("did-fail-load", function() {
     console.log("did-fail-load");
