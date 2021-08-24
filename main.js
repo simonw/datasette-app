@@ -17,6 +17,8 @@ function createWindow() {
     "8024",
     "--version-note",
     "xyz-for-datasette-app",
+    "--template-dir",
+    "templates"
   ]);
   datasette.on("error", (err) => {
     console.error("Failed to start datasette");
