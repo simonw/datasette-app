@@ -1,6 +1,7 @@
 const { app, Menu, BrowserWindow, dialog } = require("electron");
 const path = require("path");
 const cp = require("child_process");
+const portfinder = require("portfinder");
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -10,58 +11,68 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
     }, */
   });
-  // Start Python Datasette process
-  let datasette = cp.spawn("datasette", [
-    "--memory",
-    "--port",
-    "8024",
-    "--version-note",
-    "xyz-for-datasette-app",
-    "--template-dir",
-    "templates"
-  ]);
-  datasette.on("error", (err) => {
-    console.error("Failed to start datasette");
-    app.quit();
-  });
-  app.on("will-quit", () => {
-    datasette.kill();
-  });
-  mainWindow.webContents.on("did-fail-load", function () {
-    console.log("did-fail-load");
-    setTimeout(tryAndLoad, 300);
-  });
-
-  function tryAndLoad() {
-    mainWindow.loadURL("http://localhost:8024");
-  }
-  setTimeout(tryAndLoad, 300);
-
-  var menu = Menu.buildFromTemplate([
+  portfinder.getPort(
     {
-      label: "Menu",
-      submenu: [
-        {
-          label: "About Datasette",
-          click() {
-            dialog.showMessageBox({
-              type: "info",
-              title: "Datasette",
-              message: cp.execSync("datasette --version").toString(),
-            });
-          },
-        },
-        {
-          label: "Quit",
-          click() {
-            app.quit();
-          },
-        },
-      ],
+      port: 8001,
     },
-  ]);
-  Menu.setApplicationMenu(menu);
+    (err, port) => {
+      if (err) {
+        console.error("Failed to obtain a port", err);
+        app.quit();
+      }
+      // Start Python Datasette process
+      let datasette = cp.spawn("datasette", [
+        "--memory",
+        "--port",
+        port,
+        "--version-note",
+        "xyz-for-datasette-app",
+        "--template-dir",
+        "templates",
+      ]);
+      datasette.on("error", (err) => {
+        console.error("Failed to start datasette");
+        app.quit();
+      });
+      app.on("will-quit", () => {
+        datasette.kill();
+      });
+      mainWindow.webContents.on("did-fail-load", function () {
+        console.log("did-fail-load");
+        setTimeout(tryAndLoad, 300);
+      });
 
+      function tryAndLoad() {
+        mainWindow.loadURL(`http://localhost:${port}`);
+      }
+      setTimeout(tryAndLoad, 300);
+
+      var menu = Menu.buildFromTemplate([
+        {
+          label: "Menu",
+          submenu: [
+            {
+              label: "About Datasette",
+              click() {
+                dialog.showMessageBox({
+                  type: "info",
+                  title: "Datasette",
+                  message: cp.execSync("datasette --version").toString(),
+                });
+              },
+            },
+            {
+              label: "Quit",
+              click() {
+                app.quit();
+              },
+            },
+          ],
+        },
+      ]);
+      Menu.setApplicationMenu(menu);
+    }
+  );
   // mainWindow.webContents.openDevTools()
 }
 
