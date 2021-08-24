@@ -26,8 +26,9 @@ describe("Application launch", function () {
 
   it("shows an initial window", async function () {
     await sleep(1000);
-    return this.app.client.getWindowCount().then(function (count) {
+    this.app.client.getWindowCount().then(function (count) {
       assert.strictEqual(count, 1);
+      done();
     });
   });
 });
