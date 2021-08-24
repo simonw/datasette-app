@@ -11,22 +11,30 @@ function createWindow() {
     }, */
   });
   // Start Python Datasette process
-  let datasette = cp.spawn('datasette', ['--memory', '--port', '8024']);
-  datasette.on('error', (err) => {
-    console.error('Failed to start datasette');
+  let datasette = cp.spawn("datasette", [
+    "--memory",
+    "--port",
+    "8024",
+    "--version-note",
+    "xyz-for-datasette-app",
+  ]);
+  datasette.on("error", (err) => {
+    console.error("Failed to start datasette");
     app.quit();
   });
-
-  mainWindow.webContents.on("did-fail-load", function() {
+  app.on("will-quit", () => {
+    datasette.kill();
+  });
+  mainWindow.webContents.on("did-fail-load", function () {
     console.log("did-fail-load");
     setTimeout(tryAndLoad, 300);
   });
 
   function tryAndLoad() {
-    mainWindow.loadURL('http://localhost:8024');
-  };
+    mainWindow.loadURL("http://localhost:8024");
+  }
   setTimeout(tryAndLoad, 300);
-  
+
   var menu = Menu.buildFromTemplate([
     {
       label: "Menu",
@@ -37,7 +45,7 @@ function createWindow() {
             dialog.showMessageBox({
               type: "info",
               title: "Datasette",
-              message: cp.execSync("datasette --version").toString()
+              message: cp.execSync("datasette --version").toString(),
             });
           },
         },
