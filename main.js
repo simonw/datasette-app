@@ -11,29 +11,42 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
     }, */
   });
+  let datasette = null;
+  let port = null;
+  let files = [];
+
+  function startDatasette(app) {
+    if (datasette) {
+      datasette.kill();
+    }
+    const args = [
+      "--memory",
+      "--port",
+      port,
+      "--version-note",
+      "xyz-for-datasette-app",
+      "--template-dir",
+      "templates",
+    ];
+    datasette = cp.spawn("datasette", args.concat(files));
+    datasette.on("error", (err) => {
+      console.error("Failed to start datasette");
+      app.quit();
+    });
+  }
+
   portfinder.getPort(
     {
       port: 8001,
     },
-    (err, port) => {
+    (err, freePort) => {
       if (err) {
         console.error("Failed to obtain a port", err);
         app.quit();
       }
+      port = freePort;
       // Start Python Datasette process
-      let datasette = cp.spawn("datasette", [
-        "--memory",
-        "--port",
-        port,
-        "--version-note",
-        "xyz-for-datasette-app",
-        "--template-dir",
-        "templates",
-      ]);
-      datasette.on("error", (err) => {
-        console.error("Failed to start datasette");
-        app.quit();
-      });
+      startDatasette(app);
       app.on("will-quit", () => {
         datasette.kill();
       });
@@ -52,6 +65,20 @@ function createWindow() {
           label: "Menu",
           submenu: [
             {
+              label: "Open Database…",
+              click() {
+                let selectedFiles = dialog.showOpenDialogSync({
+                  properties: ["openFile", "multiSelections"],
+                });
+                files = files.concat(selectedFiles);
+                startDatasette(app);
+                setTimeout(() => {
+                  mainWindow.webContents.reload();
+                }, 500);
+              },
+            },
+            { type: "separator" },
+            {
               label: "About Datasette",
               click() {
                 dialog.showMessageBox({
@@ -62,10 +89,7 @@ function createWindow() {
               },
             },
             {
-              label: "Quit",
-              click() {
-                app.quit();
-              },
+              role: "quit",
             },
           ],
         },
