@@ -14,5 +14,7 @@ async def test_plugin_is_installed():
 @pytest.mark.asyncio
 async def test_static_asset_sticky_footer():
     datasette = Datasette([], memory=True)
-    response = await datasette.client.get("/-/static-plugins/datasette_app_support/sticky-footer.css")
+    response = await datasette.client.get(
+        "/-/static-plugins/datasette_app_support/sticky-footer.css"
+    )
     assert response.status_code == 200

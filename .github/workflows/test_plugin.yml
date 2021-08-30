@@ -27,3 +27,6 @@ jobs:
     - name: Run tests
       run: |
         cd datasette-app-support && pytest
+    - name: Run Black
+      run: |
+        cd datasette-app-support && black . --check

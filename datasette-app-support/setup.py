@@ -24,10 +24,8 @@ setup(
     packages=["datasette_app_support"],
     entry_points={"datasette": ["app_support = datasette_app_support"]},
     install_requires=["datasette>=0.59a2"],
-    extras_require={"test": ["pytest", "pytest-asyncio"]},
+    extras_require={"test": ["pytest", "pytest-asyncio", "black"]},
     tests_require=["datasette-app-support[test]"],
-    package_data={
-        "datasette_app_support": ["static/*", "templates/*"]
-    },
+    package_data={"datasette_app_support": ["static/*", "templates/*"]},
     python_requires=">=3.6",
 )
