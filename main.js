@@ -80,6 +80,7 @@ function createWindow() {
             },
             {
               label: "Open Database…",
+              accelerator: "CommandOrControl+O",
               click() {
                 let selectedFiles = dialog.showOpenDialogSync({
                   properties: ["openFile", "multiSelections"],
@@ -87,13 +88,21 @@ function createWindow() {
                 files = files.concat(selectedFiles);
                 startDatasette(app);
                 setTimeout(() => {
-                  // Reload any windows showing the / page
-                  BrowserWindow.getAllWindows().forEach((win) => {
-                    let url = new URL(win.webContents.getURL());
-                    if (url.pathname == "/") {
-                      setTimeout(() => win.webContents.reload(), 300);
-                    }
-                  });
+                  var windows = BrowserWindow.getAllWindows();
+                  if (windows.length == 0) {
+                    // Open a new window
+                    new BrowserWindow({ width: 800, height: 600 }).loadURL(
+                      `http://localhost:${port}`
+                    );
+                  } else {
+                    // Reload any windows showing the / page
+                    BrowserWindow.getAllWindows().forEach((win) => {
+                      let url = new URL(win.webContents.getURL());
+                      if (url.pathname == "/") {
+                        setTimeout(() => win.webContents.reload(), 300);
+                      }
+                    });
+                  }
                 }, 500);
               },
             },
