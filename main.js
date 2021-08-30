@@ -24,7 +24,7 @@ function createWindow() {
       "--port",
       port,
       "--version-note",
-      "xyz-for-datasette-app"
+      "xyz-for-datasette-app",
     ];
     datasette = cp.spawn("datasette", args.concat(files));
     datasette.on("error", (err) => {
@@ -63,6 +63,22 @@ function createWindow() {
           label: "Menu",
           submenu: [
             {
+              label: "New Window",
+              accelerator: "CommandOrControl+N",
+              click() {
+                let opts = {
+                  width: 800,
+                  height: 600,
+                };
+                if (BrowserWindow.getFocusedWindow()) {
+                  const pos = BrowserWindow.getFocusedWindow().getPosition();
+                  opts.x = pos[0] + 22;
+                  opts.y = pos[1] + 22;
+                }
+                new BrowserWindow(opts).loadURL(`http://localhost:${port}`);
+              },
+            },
+            {
               label: "Open Database…",
               click() {
                 let selectedFiles = dialog.showOpenDialogSync({
@@ -77,6 +93,10 @@ function createWindow() {
             },
             { type: "separator" },
             {
+              role: "close",
+            },
+            { type: "separator" },
+            {
               label: "About Datasette",
               click() {
                 dialog.showMessageBox({
@@ -86,6 +106,7 @@ function createWindow() {
                 });
               },
             },
+            { type: "separator" },
             {
               role: "quit",
             },
