@@ -86,7 +86,6 @@ function createWindow() {
                   properties: ["openFile", "multiSelections"],
                 });
                 for (const filepath of selectedFiles) {
-                  console.log(request);
                   const response = await request(
                     `http://localhost:${port}/-/open-database-file`,
                     {
