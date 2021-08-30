@@ -1,6 +1,6 @@
 # Datasette.app
 
-An Electron app that wraps [Datasette](https://datasette.io/).
+An Electron app that wraps [Datasette](https://datasette.io/). See [Building a desktop application for Datasette](https://simonwillison.net/2021/Aug/30/datasette-app/) for background on this project.
 
 The app consists of two parts: the Electron app, and a custom Datasette plugin called datasette-app-support.
 
@@ -36,3 +36,5 @@ The Electron tests may leave a `datasette` process running. You can find the pro
     ps aux | grep xyz
 
 Then use `kill PROCESS_ID` to terminate it.
+
+![datasette-app](https://user-images.githubusercontent.com/9599/131289203-18186b26-49a4-46e9-8925-b9e4745f3252.png)
