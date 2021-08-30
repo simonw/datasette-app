@@ -87,7 +87,13 @@ function createWindow() {
                 files = files.concat(selectedFiles);
                 startDatasette(app);
                 setTimeout(() => {
-                  mainWindow.webContents.reload();
+                  // Reload any windows showing the / page
+                  BrowserWindow.getAllWindows().forEach((win) => {
+                    let url = new URL(win.webContents.getURL());
+                    if (url.pathname == "/") {
+                      setTimeout(() => win.webContents.reload(), 300);
+                    }
+                  });
                 }, 500);
               },
             },
