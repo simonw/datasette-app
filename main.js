@@ -1,4 +1,5 @@
 const { app, Menu, BrowserWindow, dialog } = require("electron");
+const request = require("electron-request");
 const path = require("path");
 const cp = require("child_process");
 const portfinder = require("portfinder");
@@ -13,7 +14,6 @@ function createWindow() {
   });
   let datasette = null;
   let port = null;
-  let files = [];
 
   function startDatasette(app) {
     if (datasette) {
@@ -26,7 +26,7 @@ function createWindow() {
       "--version-note",
       "xyz-for-datasette-app",
     ];
-    datasette = cp.spawn("datasette", args.concat(files));
+    datasette = cp.spawn("datasette", args);
     datasette.on("error", (err) => {
       console.error("Failed to start datasette");
       app.quit();
@@ -81,12 +81,23 @@ function createWindow() {
             {
               label: "Open Database…",
               accelerator: "CommandOrControl+O",
-              click() {
+              click: async () => {
                 let selectedFiles = dialog.showOpenDialogSync({
                   properties: ["openFile", "multiSelections"],
                 });
-                files = files.concat(selectedFiles);
-                startDatasette(app);
+                for (const filepath of selectedFiles) {
+                  console.log(request);
+                  const response = await request(
+                    `http://localhost:${port}/-/open-database-file`,
+                    {
+                      method: "POST",
+                      body: JSON.stringify({ path: filepath }),
+                    }
+                  );
+                  if (!response.ok) {
+                    console.log(await response.json());
+                  }
+                }
                 setTimeout(() => {
                   var windows = BrowserWindow.getAllWindows();
                   if (windows.length == 0) {

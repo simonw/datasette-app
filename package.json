@@ -29,6 +29,7 @@
     "spectron": "^15.0.0"
   },
   "dependencies": {
+    "electron-request": "^1.7.1",
     "portfinder": "^1.0.28"
   }
 }
