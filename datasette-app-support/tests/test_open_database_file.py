@@ -17,6 +17,12 @@ async def test_open_database_files(tmpdir):
         response.json()["tables"][0].items()
         >= {"name": "foo", "columns": ["id"], "primary_keys": ["id"]}.items()
     )
+    # Opening the same file again won't work
+    response2 = await datasette.client.post(
+        "/-/open-database-file", json={"path": path}
+    )
+    assert response2.status_code == 400
+    assert response2.json() == {"error": "That file is already open", "ok": False}
 
 
 @pytest.mark.asyncio

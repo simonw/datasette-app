@@ -4,6 +4,7 @@ from datasette.utils import sqlite3
 from datasette import hookimpl
 import json
 import os
+import pathlib
 
 
 @hookimpl
@@ -35,6 +36,16 @@ async def open_database_file(request, datasette):
     except sqlite3.DatabaseError:
         return Response.json(
             {"ok": False, "error": "Not a valid SQLite database"}, status=400
+        )
+    # Is that file already open?
+    existing_paths = {
+        pathlib.Path(db.path).resolve()
+        for db in datasette.databases.values()
+        if db.path
+    }
+    if pathlib.Path(filepath).resolve() in existing_paths:
+        return Response.json(
+            {"ok": False, "error": "That file is already open"}, status=400
         )
     datasette.add_database(Database(datasette, path=filepath, is_mutable=True))
     return Response.json({"ok": True})
