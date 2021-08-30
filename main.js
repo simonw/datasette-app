@@ -24,9 +24,7 @@ function createWindow() {
       "--port",
       port,
       "--version-note",
-      "xyz-for-datasette-app",
-      "--template-dir",
-      "templates",
+      "xyz-for-datasette-app"
     ];
     datasette = cp.spawn("datasette", args.concat(files));
     datasette.on("error", (err) => {

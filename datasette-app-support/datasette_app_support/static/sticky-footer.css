@@ -1,0 +1,14 @@
+html,
+body {
+  height: 100%;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+.not-footer {
+  flex: 1 0 auto;
+}
+footer {
+  flex-shrink: 0;
+}
