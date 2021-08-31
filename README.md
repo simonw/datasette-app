@@ -2,7 +2,7 @@
 
 An Electron app that wraps [Datasette](https://datasette.io/). See [Building a desktop application for Datasette](https://simonwillison.net/2021/Aug/30/datasette-app/) for background on this project.
 
-The app consists of two parts: the Electron app, and a custom Datasette plugin called datasette-app-support.
+The app consists of two parts: the Electron app, and a custom Datasette plugin called [datasette-app-support](https://github.com/simonw/datasette.app/tree/main/datasette-app-support).
 
 It is not yet packaged with an installer. You can preview the app like so:
 
@@ -22,7 +22,7 @@ It is not yet packaged with an installer. You can preview the app like so:
     npm install
     npm start
 
-To run the plugin tests:
+To run the tests for the `datasette-app-support` plugin:
     
     pip install 'datasette-app-support/.[test]'
     pytest
