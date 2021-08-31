@@ -33,3 +33,11 @@ jobs:
           ./download-python.sh
       - name: Run tests
         run: npm test
+      - name: Build distribution
+        run: npm run dist
+      - name: Upload DMG as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: macos-dmg
+          path: |
+            dist/*.dmg
