@@ -25,6 +25,19 @@ function findPython() {
   app.quit();
 }
 
+function windowOpts() {
+  let opts = {
+    width: 800,
+    height: 600,
+  };
+  if (BrowserWindow.getFocusedWindow()) {
+    const pos = BrowserWindow.getFocusedWindow().getPosition();
+    opts.x = pos[0] + 22;
+    opts.y = pos[1] + 22;
+  }
+  return opts;
+}
+
 async function ensureDatasetteInstalled() {
   const datasette_app_dir = path.join(process.env.HOME, ".datasette-app");
   const venv_dir = path.join(datasette_app_dir, "venv");
@@ -39,7 +52,11 @@ async function ensureDatasetteInstalled() {
     await execFile(findPython(), ["-m", "venv", venv_dir]);
   }
   const pip_path = path.join(venv_dir, "bin", "pip");
-  await execFile(pip_path, ["install", "datasette==0.59a2", "datasette-app-support>=0.1.2"]);
+  await execFile(pip_path, [
+    "install",
+    "datasette==0.59a2",
+    "datasette-app-support>=0.1.2",
+  ]);
   await new Promise((resolve) => setTimeout(resolve, 500));
   return datasette_binary;
 }
@@ -108,16 +125,9 @@ function createWindow() {
               label: "New Window",
               accelerator: "CommandOrControl+N",
               click() {
-                let opts = {
-                  width: 800,
-                  height: 600,
-                };
-                if (BrowserWindow.getFocusedWindow()) {
-                  const pos = BrowserWindow.getFocusedWindow().getPosition();
-                  opts.x = pos[0] + 22;
-                  opts.y = pos[1] + 22;
-                }
-                new BrowserWindow(opts).loadURL(`http://localhost:${port}`);
+                new BrowserWindow(windowOpts()).loadURL(
+                  `http://localhost:${port}`
+                );
               },
             },
             {
@@ -140,20 +150,19 @@ function createWindow() {
                   }
                 }
                 setTimeout(() => {
-                  var windows = BrowserWindow.getAllWindows();
-                  if (windows.length == 0) {
+                  let shouldOpen = true;
+                  BrowserWindow.getAllWindows().forEach((win) => {
+                    let url = new URL(win.webContents.getURL());
+                    if (url.pathname == "/") {
+                      shouldOpen = false;
+                      setTimeout(() => win.webContents.reload(), 300);
+                    }
+                  });
+                  if (shouldOpen) {
                     // Open a new window
-                    new BrowserWindow({ width: 800, height: 600 }).loadURL(
+                    new BrowserWindow(windowOpts()).loadURL(
                       `http://localhost:${port}`
                     );
-                  } else {
-                    // Reload any windows showing the / page
-                    BrowserWindow.getAllWindows().forEach((win) => {
-                      let url = new URL(win.webContents.getURL());
-                      if (url.pathname == "/") {
-                        setTimeout(() => win.webContents.reload(), 300);
-                      }
-                    });
                   }
                 }, 500);
               },
