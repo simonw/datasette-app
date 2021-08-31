@@ -8,7 +8,7 @@
     "start": "electron .",
     "test": "mocha",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder --publish never"
   },
   "build": {
     "appId": "io.datasette.app",
