@@ -1,14 +1,14 @@
-# Datasette.app
+# datasette-app
 
 An Electron app that wraps [Datasette](https://datasette.io/). See [Building a desktop application for Datasette](https://simonwillison.net/2021/Aug/30/datasette-app/) for background on this project.
 
-The app consists of two parts: the Electron app, and a custom Datasette plugin called [datasette-app-support](https://github.com/simonw/datasette.app/tree/main/datasette-app-support).
+The app consists of two parts: the Electron app, and a custom Datasette plugin called [datasette-app-support](https://github.com/simonw/datasette-app/tree/main/datasette-app-support).
 
 It is not yet packaged with an installer. You can preview the app like so:
 
     # Clone the repo
-    git clone https://github.com/simonw/datasette.app
-    cd datasette.app
+    git clone https://github.com/simonw/datasette-app
+    cd datasette-app
     
     # Start a Python virtual environment
     pipenv shell
@@ -16,7 +16,7 @@ It is not yet packaged with an installer. You can preview the app like so:
     
     # Confirm the custom datasette is on the path
     which datasette
-    # If that doesn't show the datasette.app one, hit Ctrl+D then run 'pipenv shell' again
+    # If that doesn't show the datasette-app one, hit Ctrl+D then run 'pipenv shell' again
     
     # Install Electron dependencies and start it running:
     npm install
