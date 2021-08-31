@@ -5,7 +5,7 @@ on: push
 jobs:
   test:
     runs-on: macos-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v2
       - name: Configure Node caching
