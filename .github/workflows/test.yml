@@ -28,8 +28,8 @@ jobs:
             ${{ runner.os }}-pip-
       - name: Install Node dependencies
         run: npm install
-      - name: Install Python dependencies
+      - name: Download standalone Python
         run: |
-          pip3 install -r requirements.txt
+          ./download-python.sh
       - name: Run tests
         run: npm test
