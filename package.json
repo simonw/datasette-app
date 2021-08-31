@@ -14,7 +14,16 @@
     "appId": "io.datasette.app",
     "mac": {
       "category": "public.app-category.developer-tools"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "python",
+        "to": "python",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   },
   "repository": "https://github.com/simonw/datasette-app",
   "keywords": [

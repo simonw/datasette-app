@@ -3,6 +3,46 @@ const request = require("electron-request");
 const path = require("path");
 const cp = require("child_process");
 const portfinder = require("portfinder");
+const fs = require("fs");
+const util = require("util");
+
+const execFile = util.promisify(cp.execFile);
+const mkdir = util.promisify(fs.mkdir);
+
+function findPython() {
+  const possibilities = [
+    // In packaged app
+    path.join(process.resourcesPath, "python", "bin", "python3.9"),
+    // In development
+    path.join(__dirname, "python", "bin", "python3.9"),
+  ];
+  for (const path of possibilities) {
+    if (fs.existsSync(path)) {
+      return path;
+    }
+  }
+  console.log("Could not find python3, checked", possibilities);
+  app.quit();
+}
+
+async function ensureDatasetteInstalled() {
+  const datasette_app_dir = path.join(process.env.HOME, ".datasette-app");
+  const venv_dir = path.join(datasette_app_dir, "venv");
+  const datasette_binary = path.join(venv_dir, "bin", "datasette");
+  if (fs.existsSync(datasette_binary)) {
+    return datasette_binary;
+  }
+  if (!fs.existsSync(datasette_app_dir)) {
+    await mkdir(datasette_app_dir);
+  }
+  if (!fs.existsSync(venv_dir)) {
+    await execFile(findPython(), ["-m", "venv", venv_dir]);
+  }
+  const pip_path = path.join(venv_dir, "bin", "pip");
+  await execFile(pip_path, ["install", "datasette==0.59a2", "datasette-app-support>=0.1.2"]);
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return datasette_binary;
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -26,10 +66,12 @@ function createWindow() {
       "--version-note",
       "xyz-for-datasette-app",
     ];
-    datasette = cp.spawn("datasette", args);
-    datasette.on("error", (err) => {
-      console.error("Failed to start datasette");
-      app.quit();
+    ensureDatasetteInstalled().then((datasette_bin) => {
+      datasette = cp.spawn(datasette_bin, args);
+      datasette.on("error", (err) => {
+        console.error("Failed to start datasette", err);
+        app.quit();
+      });
     });
   }
 
