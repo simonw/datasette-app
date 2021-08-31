@@ -3,3 +3,5 @@ node_modules
 *.tgz
 dist
 *.egg-info
+*.tar.gz
+python
