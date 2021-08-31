@@ -16,7 +16,7 @@
       "category": "public.app-category.developer-tools"
     }
   },
-  "repository": "https://github.com/simonw/datasette.app",
+  "repository": "https://github.com/simonw/datasette-app",
   "keywords": [
     "Electron"
   ],
