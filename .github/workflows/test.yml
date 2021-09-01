@@ -35,12 +35,14 @@ jobs:
         run: npm test
       - name: Build distribution
         run: npm run dist
-      - name: Create zip file
-        run: |
-          cd dist/mac
-          ditto -c -k Datasette.app Datasette.app.zip
-      - name: Upload zip as artifact
+      # Disabled this because it created a zip-of-a-zip:
+      # https://github.com/simonw/datasette-app/issues/33#issuecomment-910064623
+      # - name: Create zip file
+      #   run: |
+      #     cd dist/mac
+      #     ditto -c -k Datasette.app Datasette.app.zip
+      - name: Upload Datasette.app folder (should create a zip)
         uses: actions/upload-artifact@v2
         with:
-          name: Datasette.app.zip
-          path: dist/mac/Datasette.app.zip
+          name: Datasette.app
+          path: dist/mac/Datasette.app
