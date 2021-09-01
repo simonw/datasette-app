@@ -35,9 +35,12 @@ jobs:
         run: npm test
       - name: Build distribution
         run: npm run dist
-      - name: Upload DMG as artifact
+      - name: Create zip file
+        run: |
+          cd dist/mac
+          ditto -c -k Datasette.app Datasette.app.zip
+      - name: Upload zip as artifact
         uses: actions/upload-artifact@v2
         with:
-          name: macos-dmg
-          path: |
-            dist/*.dmg
+          name: Datasette.app.zip
+          path: dist/mac/Datasette.app.zip
