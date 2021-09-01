@@ -62,15 +62,9 @@ async function ensureDatasetteInstalled() {
 }
 
 function createWindow() {
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    /* webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-    }, */
-  });
   let datasette = null;
   let port = null;
+  let mainWindow = null;
 
   function startDatasette(app) {
     if (datasette) {
@@ -85,12 +79,27 @@ function createWindow() {
     ];
     ensureDatasetteInstalled().then((datasette_bin) => {
       datasette = cp.spawn(datasette_bin, args);
+      datasette.stderr.on("data", (data) => {
+        if (/Uvicorn running/.test(data)) {
+          mainWindow.loadURL(`http://localhost:${port}`);
+        }
+      });
       datasette.on("error", (err) => {
         console.error("Failed to start datasette", err);
         app.quit();
       });
     });
   }
+
+  mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    show: false,
+  });
+  mainWindow.loadFile("loading.html");
+  mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
+  });
 
   portfinder.getPort(
     {
@@ -107,15 +116,6 @@ function createWindow() {
       app.on("will-quit", () => {
         datasette.kill();
       });
-      mainWindow.webContents.on("did-fail-load", function () {
-        console.log("did-fail-load");
-        setTimeout(tryAndLoad, 300);
-      });
-
-      function tryAndLoad() {
-        mainWindow.loadURL(`http://localhost:${port}`);
-      }
-      setTimeout(tryAndLoad, 300);
 
       var menu = Menu.buildFromTemplate([
         {
@@ -125,9 +125,14 @@ function createWindow() {
               label: "New Window",
               accelerator: "CommandOrControl+N",
               click() {
-                new BrowserWindow(windowOpts()).loadURL(
-                  `http://localhost:${port}`
-                );
+                let newWindow = new BrowserWindow({
+                  ...windowOpts(),
+                  ...{ show: false },
+                });
+                newWindow.loadURL(`http://localhost:${port}`);
+                newWindow.once("ready-to-show", () => {
+                  newWindow.show();
+                });
               },
             },
             {
@@ -160,9 +165,14 @@ function createWindow() {
                   });
                   if (shouldOpen) {
                     // Open a new window
-                    new BrowserWindow(windowOpts()).loadURL(
-                      `http://localhost:${port}`
-                    );
+                    let newWindow = new BrowserWindow({
+                      ...windowOpts(),
+                      ...{ show: false },
+                    });
+                    newWindow.loadURL(`http://localhost:${port}`);
+                    newWindow.once("ready-to-show", () => {
+                      newWindow.show();
+                    });
                   }
                 }, 500);
               },
