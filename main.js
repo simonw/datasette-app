@@ -257,7 +257,7 @@ function createWindow() {
               },
             },
             {
-              label: "Installed Plugins",
+              label: "List Installed Plugins",
               click() {
                 let newWindow = new BrowserWindow({
                   ...windowOpts(),
@@ -270,7 +270,7 @@ function createWindow() {
               },
             },
             {
-              label: "Plugin Directory",
+              label: "Plugins Directory",
               click() {
                 shell.openExternal("https://datasette.io/plugins");
               },
