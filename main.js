@@ -5,10 +5,22 @@ const cp = require("child_process");
 const portfinder = require("portfinder");
 const prompt = require("electron-prompt");
 const fs = require("fs");
+const url = require("url");
 const util = require("util");
 
 const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
+
+function postConfigure(mainWindow) {
+  mainWindow.webContents.on("will-navigate", function (event, reqUrl) {
+    let requestedHost = new url.URL(reqUrl).host;
+    let currentHost = new url.URL(mainWindow.webContents.getURL()).host;
+    if (requestedHost && requestedHost != currentHost) {
+      event.preventDefault();
+      shell.openExternal(reqUrl);
+    }
+  });
+}
 
 class DatasetteServer {
   constructor(app, port) {
@@ -126,6 +138,7 @@ function createWindow() {
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
+  postConfigure(mainWindow);
 
   portfinder.getPort(
     {
@@ -180,6 +193,7 @@ function createWindow() {
                 newWindow.once("ready-to-show", () => {
                   newWindow.show();
                 });
+                postConfigure(newWindow);
               },
             },
             {
@@ -220,6 +234,7 @@ function createWindow() {
                     newWindow.once("ready-to-show", () => {
                       newWindow.show();
                     });
+                    postConfigure(newWindow);
                   }
                 }, 500);
               },
@@ -267,6 +282,7 @@ function createWindow() {
                 newWindow.once("ready-to-show", () => {
                   newWindow.show();
                 });
+                postConfigure(newWindow);
               },
             },
             {
