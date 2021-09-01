@@ -15,16 +15,11 @@ class DatasetteServer {
     this.app = app;
     this.port = port;
     this.process = null;
-    this.authUrl = null;
   }
   async startOrRestart() {
-    const python_bin = await this.ensureDatasetteInstalled();
+    const datasette_bin = await this.ensureDatasetteInstalled();
     const args = [
-      "-u", // Unbuffered, to ensure process.stdin gets data
-      "-m",
-      "datasette",
       "--memory",
-      "--root",
       "--port",
       this.port,
       "--version-note",
@@ -33,28 +28,12 @@ class DatasetteServer {
     if (this.process) {
       this.process.kill();
     }
-    const re = new RegExp('.*(http://[^/]+/-/auth-token\\?token=\\w+).*');
-    let serverStarted = false;
-    let authURL = null;
     return new Promise((resolve, reject) => {
-      const process = cp.spawn(python_bin, args, {stdio: 'pipe'});
+      const process = cp.spawn(datasette_bin, args);
       this.process = process;
-      process.stdout.on("data", (data) => {
-        const m = re.exec(data);
-        if (m) {
-          authURL = m[1];
-          if (serverStarted) {
-            resolve(authURL);
-          }
-        }
-      });
       process.stderr.on("data", (data) => {
         if (/Uvicorn running/.test(data)) {
-          console.log("Uvicorn is running");
-          serverStarted = true;
-          if (authURL) {
-            resolve(authURL);
-          }
+          resolve(`http://localhost:${this.port}/`);
         }
       });
       this.process.on("error", (err) => {
@@ -85,7 +64,7 @@ class DatasetteServer {
     const venv_dir = path.join(datasette_app_dir, "venv");
     const datasette_binary = path.join(venv_dir, "bin", "datasette");
     if (fs.existsSync(datasette_binary)) {
-      return path.join(venv_dir, "bin", "python3.9");
+      return datasette_binary;
     }
     if (!fs.existsSync(datasette_app_dir)) {
       await mkdir(datasette_app_dir);
@@ -100,8 +79,7 @@ class DatasetteServer {
       "datasette-app-support>=0.1.2",
     ]);
     await new Promise((resolve) => setTimeout(resolve, 500));
-    // Return the python binary
-    return path.join(venv_dir, "bin", "python3.9");
+    return datasette_binary;
   }
 }
 
