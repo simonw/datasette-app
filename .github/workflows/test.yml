@@ -38,11 +38,11 @@ jobs:
       - name: Create zip file
         run: |
           cd dist/mac
-          ditto -c -k Datasette.app Datasette.app.zip
+          ditto -c -k --keepParent Datasette.app Datasette.app.zip
       - name: And a README (to work around GitHub double-zips)
         run: |
           echo "More information: https://datasette.io" > dist/mac/README.txt
-      - name: Upload Datasette.app folder (should create a zip)
+      - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: Datasette-macOS
