@@ -1,4 +1,4 @@
-const { app, Menu, BrowserWindow, dialog } = require("electron");
+const { app, Menu, BrowserWindow, dialog, shell } = require("electron");
 const request = require("electron-request");
 const path = require("path");
 const cp = require("child_process");
@@ -150,6 +150,25 @@ function createWindow() {
           label: "Menu",
           submenu: [
             {
+              label: "About Datasette",
+              click() {
+                dialog.showMessageBox({
+                  type: "info",
+                  title: "Datasette",
+                  message: cp.execSync("datasette --version").toString(),
+                });
+              },
+            },
+            { type: "separator" },
+            {
+              role: "quit",
+            },
+          ],
+        },
+        {
+          label: "File",
+          submenu: [
+            {
               label: "New Window",
               accelerator: "CommandOrControl+N",
               click() {
@@ -205,6 +224,15 @@ function createWindow() {
                 }, 500);
               },
             },
+            { type: "separator" },
+            {
+              role: "close",
+            },
+          ],
+        },
+        {
+          label: "Plugins",
+          submenu: [
             {
               label: "Install Plugin…",
               click() {
@@ -213,7 +241,7 @@ function createWindow() {
                   label: "Plugin name:",
                   value: "datasette-vega",
                   type: "input",
-                  alwaysOnTop: true
+                  alwaysOnTop: true,
                 })
                   .then(async (pluginName) => {
                     if (pluginName !== null) {
@@ -221,31 +249,31 @@ function createWindow() {
                       await datasette.startOrRestart();
                       dialog.showMessageBoxSync({
                         type: "info",
-                        message: "Plugin installed"
+                        message: "Plugin installed",
                       });
                     }
                   })
                   .catch(console.error);
               },
             },
-            { type: "separator" },
             {
-              role: "close",
-            },
-            { type: "separator" },
-            {
-              label: "About Datasette",
+              label: "Installed Plugins",
               click() {
-                dialog.showMessageBox({
-                  type: "info",
-                  title: "Datasette",
-                  message: cp.execSync("datasette --version").toString(),
+                let newWindow = new BrowserWindow({
+                  ...windowOpts(),
+                  ...{ show: false },
+                });
+                newWindow.loadURL(`http://localhost:${port}/-/plugins`);
+                newWindow.once("ready-to-show", () => {
+                  newWindow.show();
                 });
               },
             },
-            { type: "separator" },
             {
-              role: "quit",
+              label: "Plugin Directory",
+              click() {
+                shell.openExternal("https://datasette.io/plugins");
+              },
             },
           ],
         },
