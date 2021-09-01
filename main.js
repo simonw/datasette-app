@@ -3,11 +3,100 @@ const request = require("electron-request");
 const path = require("path");
 const cp = require("child_process");
 const portfinder = require("portfinder");
+const prompt = require("electron-prompt");
 const fs = require("fs");
 const util = require("util");
 
 const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
+
+class DatasetteServer {
+  constructor(app, port) {
+    this.app = app;
+    this.port = port;
+    this.process = null;
+  }
+  async startOrRestart() {
+    const datasette_bin = await this.ensureDatasetteInstalled();
+    const args = [
+      "--memory",
+      "--root",
+      "--port",
+      this.port,
+      "--version-note",
+      "xyz-for-datasette-app",
+    ];
+    if (this.process) {
+      this.process.kill();
+    }
+    const re = new RegExp('.*(http://[^/]+/-/auth-token\\?token=\\w+).*');
+    let serverStarted = false;
+    let authURL = null;
+    this.process = cp.spawn(datasette_bin, args);
+    return new Promise((resolve, reject) => {
+      this.process.stdout.on("data", (data) => {
+        const m = re.exec(data);
+        console.log('data:', '' + data);
+        if (m) {
+          console.log(m);
+          this.authURL = m[1];
+        }
+      });
+      this.process.stderr.on("data", (data) => {
+        if (/Uvicorn running/.test(data)) {
+          console.log("Uvicorn is running");
+          serverStarted = true;
+          if (serverStarted && authURL) {
+            resolve(authURL);
+          }
+        }
+      });
+      this.process.on("error", (err) => {
+        console.error("Failed to start datasette", err);
+        this.app.quit();
+        reject();
+      });
+    });
+  }
+
+  shutdown() {
+    this.process.kill();
+  }
+
+  async installPlugin(plugin) {
+    const pip_binary = path.join(
+      process.env.HOME,
+      ".datasette-app",
+      "venv",
+      "bin",
+      "pip"
+    );
+    await execFile(pip_binary, ["install", plugin]);
+  }
+
+  async ensureDatasetteInstalled() {
+    const datasette_app_dir = path.join(process.env.HOME, ".datasette-app");
+    const venv_dir = path.join(datasette_app_dir, "venv");
+    const datasette_binary = path.join(venv_dir, "bin", "datasette");
+    if (fs.existsSync(datasette_binary)) {
+      return datasette_binary;
+    }
+    if (!fs.existsSync(datasette_app_dir)) {
+      await mkdir(datasette_app_dir);
+    }
+    if (!fs.existsSync(venv_dir)) {
+      await execFile(findPython(), ["-m", "venv", venv_dir]);
+    }
+    const pip_path = path.join(venv_dir, "bin", "pip");
+    await execFile(pip_path, [
+      "install",
+      "datasette==0.59a2",
+      "datasette-app-support>=0.1.2",
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return datasette_binary;
+  }
+}
 
 function findPython() {
   const possibilities = [
@@ -38,58 +127,10 @@ function windowOpts() {
   return opts;
 }
 
-async function ensureDatasetteInstalled() {
-  const datasette_app_dir = path.join(process.env.HOME, ".datasette-app");
-  const venv_dir = path.join(datasette_app_dir, "venv");
-  const datasette_binary = path.join(venv_dir, "bin", "datasette");
-  if (fs.existsSync(datasette_binary)) {
-    return datasette_binary;
-  }
-  if (!fs.existsSync(datasette_app_dir)) {
-    await mkdir(datasette_app_dir);
-  }
-  if (!fs.existsSync(venv_dir)) {
-    await execFile(findPython(), ["-m", "venv", venv_dir]);
-  }
-  const pip_path = path.join(venv_dir, "bin", "pip");
-  await execFile(pip_path, [
-    "install",
-    "datasette==0.59a2",
-    "datasette-app-support>=0.1.2",
-  ]);
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return datasette_binary;
-}
-
 function createWindow() {
   let datasette = null;
   let port = null;
   let mainWindow = null;
-
-  function startDatasette(app) {
-    if (datasette) {
-      datasette.kill();
-    }
-    const args = [
-      "--memory",
-      "--port",
-      port,
-      "--version-note",
-      "xyz-for-datasette-app",
-    ];
-    ensureDatasetteInstalled().then((datasette_bin) => {
-      datasette = cp.spawn(datasette_bin, args);
-      datasette.stderr.on("data", (data) => {
-        if (/Uvicorn running/.test(data)) {
-          mainWindow.loadURL(`http://localhost:${port}`);
-        }
-      });
-      datasette.on("error", (err) => {
-        console.error("Failed to start datasette", err);
-        app.quit();
-      });
-    });
-  }
 
   mainWindow = new BrowserWindow({
     width: 800,
@@ -105,16 +146,19 @@ function createWindow() {
     {
       port: 8001,
     },
-    (err, freePort) => {
+    async (err, freePort) => {
       if (err) {
         console.error("Failed to obtain a port", err);
         app.quit();
       }
       port = freePort;
       // Start Python Datasette process
-      startDatasette(app);
+      datasette = new DatasetteServer(app, port);
+      const url = await datasette.startOrRestart();
+      console.log('url: ', url);
+      mainWindow.loadURL(url);
       app.on("will-quit", () => {
-        datasette.kill();
+        datasette.shutdown();
       });
 
       var menu = Menu.buildFromTemplate([
@@ -175,6 +219,35 @@ function createWindow() {
                     });
                   }
                 }, 500);
+              },
+            },
+            {
+              label: "Install Plugin…",
+              click() {
+                prompt({
+                  title: "Install Plugin",
+                  label: "Plugin name:",
+                  value: "datasette-vega",
+                  type: "input",
+                  alwaysOnTop: true
+                })
+                  .then(async (pluginName) => {
+                    if (pluginName !== null) {
+                      await datasette.installPlugin(pluginName);
+                      await datasette.startOrRestart();
+                      dialog.showMessageBoxSync({
+                        type: "info",
+                        message: "Plugin installed"
+                      });
+                      prompt({
+                        title: "Install Plugin",
+                        label: "Plugin name:",
+                        value: "datasette-vega",
+                        type: "input",
+                      })
+                    }
+                  })
+                  .catch(console.error);
               },
             },
             { type: "separator" },
