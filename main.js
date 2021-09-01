@@ -15,10 +15,14 @@ class DatasetteServer {
     this.app = app;
     this.port = port;
     this.process = null;
+    this.authUrl = null;
   }
   async startOrRestart() {
-    const datasette_bin = await this.ensureDatasetteInstalled();
+    const python_bin = await this.ensureDatasetteInstalled();
     const args = [
+      "-u", // Unbuffered, to ensure process.stdin gets data
+      "-m",
+      "datasette",
       "--memory",
       "--root",
       "--port",
@@ -32,21 +36,23 @@ class DatasetteServer {
     const re = new RegExp('.*(http://[^/]+/-/auth-token\\?token=\\w+).*');
     let serverStarted = false;
     let authURL = null;
-    this.process = cp.spawn(datasette_bin, args);
     return new Promise((resolve, reject) => {
-      this.process.stdout.on("data", (data) => {
+      const process = cp.spawn(python_bin, args, {stdio: 'pipe'});
+      this.process = process;
+      process.stdout.on("data", (data) => {
         const m = re.exec(data);
-        console.log('data:', '' + data);
         if (m) {
-          console.log(m);
-          this.authURL = m[1];
+          authURL = m[1];
+          if (serverStarted) {
+            resolve(authURL);
+          }
         }
       });
-      this.process.stderr.on("data", (data) => {
+      process.stderr.on("data", (data) => {
         if (/Uvicorn running/.test(data)) {
           console.log("Uvicorn is running");
           serverStarted = true;
-          if (serverStarted && authURL) {
+          if (authURL) {
             resolve(authURL);
           }
         }
@@ -79,7 +85,7 @@ class DatasetteServer {
     const venv_dir = path.join(datasette_app_dir, "venv");
     const datasette_binary = path.join(venv_dir, "bin", "datasette");
     if (fs.existsSync(datasette_binary)) {
-      return datasette_binary;
+      return path.join(venv_dir, "bin", "python3.9");
     }
     if (!fs.existsSync(datasette_app_dir)) {
       await mkdir(datasette_app_dir);
@@ -94,7 +100,8 @@ class DatasetteServer {
       "datasette-app-support>=0.1.2",
     ]);
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return datasette_binary;
+    // Return the python binary
+    return path.join(venv_dir, "bin", "python3.9");
   }
 }
 
@@ -155,7 +162,6 @@ function createWindow() {
       // Start Python Datasette process
       datasette = new DatasetteServer(app, port);
       const url = await datasette.startOrRestart();
-      console.log('url: ', url);
       mainWindow.loadURL(url);
       app.on("will-quit", () => {
         datasette.shutdown();
@@ -239,12 +245,6 @@ function createWindow() {
                         type: "info",
                         message: "Plugin installed"
                       });
-                      prompt({
-                        title: "Install Plugin",
-                        label: "Plugin name:",
-                        value: "datasette-vega",
-                        type: "input",
-                      })
                     }
                   })
                   .catch(console.error);
