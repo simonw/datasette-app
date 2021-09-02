@@ -1,4 +1,11 @@
-const { app, Menu, BrowserWindow, dialog, shell } = require("electron");
+const {
+  app,
+  Menu,
+  BrowserWindow,
+  dialog,
+  session,
+  shell,
+} = require("electron");
 const request = require("electron-request");
 const path = require("path");
 const cp = require("child_process");
@@ -11,14 +18,20 @@ const util = require("util");
 const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
 
-function postConfigure(mainWindow) {
-  mainWindow.webContents.on("will-navigate", function (event, reqUrl) {
+function postConfigure(win) {
+  win.webContents.on("will-navigate", function (event, reqUrl) {
     let requestedHost = new url.URL(reqUrl).host;
-    let currentHost = new url.URL(mainWindow.webContents.getURL()).host;
+    let currentHost = new url.URL(win.webContents.getURL()).host;
     if (requestedHost && requestedHost != currentHost) {
       event.preventDefault();
       shell.openExternal(reqUrl);
     }
+  });
+  win.on('did-start-navigation', function() {
+    session.defaultSession.cookies.flushStore();
+  });
+  win.on('did-navigate', function() {
+    session.defaultSession.cookies.flushStore();
   });
 }
 
@@ -29,9 +42,13 @@ class DatasetteServer {
     this.process = null;
   }
   async startOrRestart() {
-    const datasette_bin = await this.ensureDatasetteInstalled();
+    const python_bin = await this.ensureDatasetteInstalled();
     const args = [
+      "-u", // Unbuffered, to ensure process.stdin gets data
+      "-m",
+      "datasette",
       "--memory",
+      "--root",
       "--port",
       this.port,
       "--version-note",
@@ -40,12 +57,30 @@ class DatasetteServer {
     if (this.process) {
       this.process.kill();
     }
+    const re = new RegExp(".*(http://[^/]+/-/auth-token\\?token=\\w+).*");
+    let serverStarted = false;
+    let authURL = null;
     return new Promise((resolve, reject) => {
-      const process = cp.spawn(datasette_bin, args);
+      const process = cp.spawn(python_bin, args, { stdio: "pipe" });
       this.process = process;
+      process.stdout.on("data", (data) => {
+        console.log("stdout", data.toString());
+        const m = re.exec(data);
+        if (m) {
+          authURL = m[1].replace('auth-token', 'auth-token-persistent');
+          if (serverStarted) {
+            resolve(authURL);
+          }
+        }
+      });
       process.stderr.on("data", (data) => {
+        console.log("stderr", data.toString());
         if (/Uvicorn running/.test(data)) {
-          resolve(`http://localhost:${this.port}/`);
+          console.log("Uvicorn is running");
+          serverStarted = true;
+          if (authURL) {
+            resolve(authURL);
+          }
         }
       });
       this.process.on("error", (err) => {
@@ -76,7 +111,7 @@ class DatasetteServer {
     const venv_dir = path.join(datasette_app_dir, "venv");
     const datasette_binary = path.join(venv_dir, "bin", "datasette");
     if (fs.existsSync(datasette_binary)) {
-      return datasette_binary;
+      return path.join(venv_dir, "bin", "python3.9");
     }
     if (!fs.existsSync(datasette_app_dir)) {
       await mkdir(datasette_app_dir);
@@ -91,7 +126,7 @@ class DatasetteServer {
       "datasette-app-support>=0.1.2",
     ]);
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return datasette_binary;
+    return path.join(venv_dir, "bin", "python3.9");
   }
 }
 
@@ -115,12 +150,16 @@ function windowOpts() {
   let opts = {
     width: 800,
     height: 600,
+    webPreferences: {
+      partition: "persist:sharecookies"
+    }
   };
   if (BrowserWindow.getFocusedWindow()) {
     const pos = BrowserWindow.getFocusedWindow().getPosition();
     opts.x = pos[0] + 22;
     opts.y = pos[1] + 22;
   }
+  console.log(opts);
   return opts;
 }
 
@@ -130,9 +169,8 @@ function createWindow() {
   let mainWindow = null;
 
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    show: false,
+    ...windowOpts(),
+    ...{ show: false },
   });
   mainWindow.loadFile("loading.html");
   mainWindow.once("ready-to-show", () => {
@@ -293,11 +331,19 @@ function createWindow() {
             },
           ],
         },
+        {
+          label: 'Debug',
+          submenu: [{
+            label: 'Open DevTools',
+            click() {
+              BrowserWindow.getFocusedWindow().webContents.openDevTools();
+            }
+          }]
+        }
       ]);
       Menu.setApplicationMenu(menu);
     }
   );
-  // mainWindow.webContents.openDevTools()
 }
 
 app.whenReady().then(() => {
