@@ -5,7 +5,7 @@
   "description": "An Electron app that wraps Datasette",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "DEBUGMENU=1 electron .",
     "test": "mocha",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --publish never"

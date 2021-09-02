@@ -157,8 +157,7 @@ function createWindow() {
       app.on("will-quit", () => {
         datasette.shutdown();
       });
-
-      var menu = Menu.buildFromTemplate([
+      let menuTemplate = [
         {
           label: "Menu",
           submenu: [
@@ -293,7 +292,21 @@ function createWindow() {
             },
           ],
         },
-      ]);
+      ];
+      if (process.env.DEBUGMENU) {
+        menuTemplate.push({
+          label: "Debug",
+          submenu: [
+            {
+              label: "Open DevTools",
+              click() {
+                BrowserWindow.getFocusedWindow().webContents.openDevTools();
+              },
+            },
+          ],
+        });
+      }
+      var menu = Menu.buildFromTemplate(menuTemplate);
       Menu.setApplicationMenu(menu);
     }
   );
