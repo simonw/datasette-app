@@ -244,6 +244,7 @@ function createWindow() {
                 let selectedFiles = dialog.showOpenDialogSync({
                   properties: ["openFile", "multiSelections"],
                 });
+                let pathToOpen = null;
                 for (const filepath of selectedFiles) {
                   const response = await request(
                     `http://localhost:${port}/-/open-csv-file`,
@@ -252,8 +253,11 @@ function createWindow() {
                       body: JSON.stringify({ path: filepath }),
                     }
                   );
-                  if (!response.ok) {
-                    console.log(await response.json());
+                  const responseJson = await response.json();
+                  if (!responseJson.ok) {
+                    console.log(responseJson);
+                  } else {
+                    pathToOpen = responseJson.path;
                   }
                 }
                 setTimeout(() => {
@@ -271,7 +275,10 @@ function createWindow() {
                       ...windowOpts(),
                       ...{ show: false },
                     });
-                    newWindow.loadURL(`http://localhost:${port}/temporary`);
+                    if (!pathToOpen) {
+                      pathToOpen = "/temporary";
+                    }
+                    newWindow.loadURL(`http://localhost:${port}${pathToOpen}`);
                     newWindow.once("ready-to-show", () => {
                       newWindow.show();
                     });
