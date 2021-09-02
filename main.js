@@ -20,6 +20,20 @@ function postConfigure(mainWindow) {
       shell.openExternal(reqUrl);
     }
   });
+  mainWindow.webContents.on("did-navigate", (event, reqUrl) => {
+    let menu = Menu.getApplicationMenu();
+    if (!menu) {
+      return;
+    }
+    let backItem = menu.getMenuItemById("back-item");
+    let forwardItem = menu.getMenuItemById("forward-item");
+    if (backItem) {
+      backItem.enabled = mainWindow.webContents.canGoBack();
+    }
+    if (forwardItem) {
+      forwardItem.enabled = mainWindow.webContents.canGoForward();
+    }
+  });
 }
 
 class DatasetteServer {
@@ -156,6 +170,46 @@ function createWindow() {
       app.on("will-quit", () => {
         datasette.shutdown();
       });
+      const homeItem = {
+        label: "Home",
+        click() {
+          let window = BrowserWindow.getFocusedWindow();
+          if (window) {
+            const url = new URL("/", window.webContents.getURL());
+            window.webContents.loadURL(url.toString());
+          }
+        },
+      };
+      const backItem = {
+        label: "Back",
+        id: "back-item",
+        accelerator: "CommandOrControl+[",
+        click() {
+          let window = BrowserWindow.getFocusedWindow();
+          if (window) {
+            window.webContents.goBack();
+          }
+        },
+        enabled: false,
+      };
+      const forwardItem = {
+        label: "Forward",
+        id: "forward-item",
+        accelerator: "CommandOrControl+]",
+        click() {
+          let window = BrowserWindow.getFocusedWindow();
+          if (window) {
+            window.webContents.goForward();
+          }
+        },
+        enabled: false,
+      };
+
+      app.on("browser-window-focus", (event, window) => {
+        forwardItem.enabled = window.webContents.canGoForward();
+        backItem.enabled = window.webContents.canGoBack();
+      });
+
       let menuTemplate = [
         {
           label: "Menu",
@@ -292,6 +346,10 @@ function createWindow() {
               role: "close",
             },
           ],
+        },
+        {
+          label: "Navigate",
+          submenu: [homeItem, backItem, forwardItem],
         },
         {
           label: "Plugins",
