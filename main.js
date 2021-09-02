@@ -87,7 +87,7 @@ class DatasetteServer {
     await execFile(pip_path, [
       "install",
       "datasette==0.59a2",
-      "datasette-app-support>=0.1.2",
+      "datasette-app-support>=0.2",
     ]);
     await new Promise((resolve) => setTimeout(resolve, 500));
     return datasette_binary;
@@ -238,7 +238,7 @@ function createWindow() {
               },
             },
             {
-              label: "Open CSV/TSV…",
+              label: "Open CSV…",
               accelerator: "CommandOrControl+C",
               click: async () => {
                 let selectedFiles = dialog.showOpenDialogSync({
