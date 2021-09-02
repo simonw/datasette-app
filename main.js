@@ -248,51 +248,8 @@ function createWindow() {
               },
             },
             {
-              label: "Open Database…",
-              accelerator: "CommandOrControl+O",
-              click: async () => {
-                let selectedFiles = dialog.showOpenDialogSync({
-                  properties: ["openFile", "multiSelections"],
-                });
-                for (const filepath of selectedFiles) {
-                  const response = await request(
-                    `http://localhost:${port}/-/open-database-file`,
-                    {
-                      method: "POST",
-                      body: JSON.stringify({ path: filepath }),
-                    }
-                  );
-                  if (!response.ok) {
-                    console.log(await response.json());
-                  }
-                }
-                setTimeout(() => {
-                  let shouldOpen = true;
-                  BrowserWindow.getAllWindows().forEach((win) => {
-                    let url = new URL(win.webContents.getURL());
-                    if (url.pathname == "/") {
-                      shouldOpen = false;
-                      setTimeout(() => win.webContents.reload(), 300);
-                    }
-                  });
-                  if (shouldOpen) {
-                    // Open a new window
-                    let newWindow = new BrowserWindow({
-                      ...windowOpts(),
-                      ...{ show: false },
-                    });
-                    newWindow.loadURL(`http://localhost:${port}`);
-                    newWindow.once("ready-to-show", () => {
-                      newWindow.show();
-                    });
-                    postConfigure(newWindow);
-                  }
-                }, 500);
-              },
-            },
-            {
               label: "Open CSV…",
-              accelerator: "CommandOrControl+C",
+              accelerator: "CommandOrControl+O",
               click: async () => {
                 let selectedFiles = dialog.showOpenDialogSync({
                   properties: ["openFile", "multiSelections"],
@@ -332,6 +289,49 @@ function createWindow() {
                       pathToOpen = "/temporary";
                     }
                     newWindow.loadURL(`http://localhost:${port}${pathToOpen}`);
+                    newWindow.once("ready-to-show", () => {
+                      newWindow.show();
+                    });
+                    postConfigure(newWindow);
+                  }
+                }, 500);
+              },
+            },
+            {
+              label: "Open Database…",
+              accelerator: "CommandOrControl+D",
+              click: async () => {
+                let selectedFiles = dialog.showOpenDialogSync({
+                  properties: ["openFile", "multiSelections"],
+                });
+                for (const filepath of selectedFiles) {
+                  const response = await request(
+                    `http://localhost:${port}/-/open-database-file`,
+                    {
+                      method: "POST",
+                      body: JSON.stringify({ path: filepath }),
+                    }
+                  );
+                  if (!response.ok) {
+                    console.log(await response.json());
+                  }
+                }
+                setTimeout(() => {
+                  let shouldOpen = true;
+                  BrowserWindow.getAllWindows().forEach((win) => {
+                    let url = new URL(win.webContents.getURL());
+                    if (url.pathname == "/") {
+                      shouldOpen = false;
+                      setTimeout(() => win.webContents.reload(), 300);
+                    }
+                  });
+                  if (shouldOpen) {
+                    // Open a new window
+                    let newWindow = new BrowserWindow({
+                      ...windowOpts(),
+                      ...{ show: false },
+                    });
+                    newWindow.loadURL(`http://localhost:${port}`);
                     newWindow.once("ready-to-show", () => {
                       newWindow.show();
                     });
