@@ -105,6 +105,28 @@ class DatasetteServer {
     await new Promise((resolve) => setTimeout(resolve, 500));
     return datasette_binary;
   }
+
+  openPath(path) {
+    path = path || '/';
+    if (
+      BrowserWindow.getAllWindows().length == 1 &&
+      new URL(BrowserWindow.getFocusedWindow().webContents.getURL()).pathname ==
+        "/"
+    ) {
+      const url = new URL(path, BrowserWindow.getFocusedWindow().webContents.getURL());
+      BrowserWindow.getFocusedWindow().webContents.loadURL(url.toString());
+    } else {
+      let newWindow = new BrowserWindow({
+        ...windowOpts(),
+        ...{ show: false },
+      });
+      newWindow.loadURL(`http://localhost:${this.port}${path}`);
+      newWindow.once("ready-to-show", () => {
+        newWindow.show();
+      });
+      postConfigure(newWindow);
+    }
+  }
 }
 
 function findPython() {
@@ -254,6 +276,9 @@ function createWindow() {
                 let selectedFiles = dialog.showOpenDialogSync({
                   properties: ["openFile", "multiSelections"],
                 });
+                if (!selectedFiles) {
+                  return;
+                }
                 let pathToOpen = null;
                 for (const filepath of selectedFiles) {
                   const response = await request(
@@ -271,29 +296,7 @@ function createWindow() {
                   }
                 }
                 setTimeout(() => {
-                  let shouldOpen = true;
-                  BrowserWindow.getAllWindows().forEach((win) => {
-                    let url = new URL(win.webContents.getURL());
-                    if (url.pathname == "/temporary") {
-                      shouldOpen = false;
-                      setTimeout(() => win.webContents.reload(), 300);
-                    }
-                  });
-                  if (shouldOpen) {
-                    // Open a new window
-                    let newWindow = new BrowserWindow({
-                      ...windowOpts(),
-                      ...{ show: false },
-                    });
-                    if (!pathToOpen) {
-                      pathToOpen = "/temporary";
-                    }
-                    newWindow.loadURL(`http://localhost:${port}${pathToOpen}`);
-                    newWindow.once("ready-to-show", () => {
-                      newWindow.show();
-                    });
-                    postConfigure(newWindow);
-                  }
+                  datasette.openPath(pathToOpen);
                 }, 500);
               },
             },
@@ -304,6 +307,10 @@ function createWindow() {
                 let selectedFiles = dialog.showOpenDialogSync({
                   properties: ["openFile", "multiSelections"],
                 });
+                if (!selectedFiles) {
+                  return;
+                }
+                let pathToOpen = null;
                 for (const filepath of selectedFiles) {
                   const response = await request(
                     `http://localhost:${port}/-/open-database-file`,
@@ -312,31 +319,15 @@ function createWindow() {
                       body: JSON.stringify({ path: filepath }),
                     }
                   );
-                  if (!response.ok) {
-                    console.log(await response.json());
+                  const responseJson = await response.json();
+                  if (!responseJson.ok) {
+                    console.log(responseJson);
+                  } else {
+                    pathToOpen = responseJson.path;
                   }
                 }
                 setTimeout(() => {
-                  let shouldOpen = true;
-                  BrowserWindow.getAllWindows().forEach((win) => {
-                    let url = new URL(win.webContents.getURL());
-                    if (url.pathname == "/") {
-                      shouldOpen = false;
-                      setTimeout(() => win.webContents.reload(), 300);
-                    }
-                  });
-                  if (shouldOpen) {
-                    // Open a new window
-                    let newWindow = new BrowserWindow({
-                      ...windowOpts(),
-                      ...{ show: false },
-                    });
-                    newWindow.loadURL(`http://localhost:${port}`);
-                    newWindow.once("ready-to-show", () => {
-                      newWindow.show();
-                    });
-                    postConfigure(newWindow);
-                  }
+                  datasette.openPath(pathToOpen);
                 }, 500);
               },
             },
