@@ -381,7 +381,21 @@ function createWindow() {
         },
         {
           label: "Navigate",
-          submenu: [homeItem, backItem, forwardItem],
+          submenu: [
+            homeItem,
+            backItem,
+            forwardItem,
+            {
+              label: "Reload Current Page",
+              accelerator: "CommandOrControl+R",
+              click() {
+                let window = BrowserWindow.getFocusedWindow();
+                if (window) {
+                  window.webContents.reload();
+                }
+              },
+            },
+          ],
         },
         {
           label: "Plugins",
