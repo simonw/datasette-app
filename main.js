@@ -291,6 +291,11 @@ function createWindow() {
                   const responseJson = await response.json();
                   if (!responseJson.ok) {
                     console.log(responseJson);
+                    dialog.showMessageBox({
+                      type: "error",
+                      message: "Error opening CSV file",
+                      detail: responseJson.error
+                    });
                   } else {
                     pathToOpen = responseJson.path;
                   }
@@ -322,6 +327,11 @@ function createWindow() {
                   const responseJson = await response.json();
                   if (!responseJson.ok) {
                     console.log(responseJson);
+                    dialog.showMessageBox({
+                      type: "error",
+                      message: "Error opening database file",
+                      detail: responseJson.error
+                    });
                   } else {
                     pathToOpen = responseJson.path;
                   }
