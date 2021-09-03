@@ -269,6 +269,32 @@ function createWindow() {
                 postConfigure(newWindow);
               },
             },
+            { type: "separator" },
+            {
+              label: "New Empty Database…",
+              accelerator: "CommandOrControl+Shift+N",
+              click: async () => {
+                const filepath = dialog.showSaveDialogSync({defaultPath: "database.db", title: "Create Empty Database"})
+                const response = await request(
+                  `http://localhost:${port}/-/new-empty-database-file`,
+                  {
+                    method: "POST",
+                    body: JSON.stringify({ path: filepath }),
+                  }
+                );
+                const responseJson = await response.json();
+                if (!responseJson.ok) {
+                  console.log(responseJson);
+                  dialog.showMessageBox({
+                    type: "error",
+                    title: "Datasette",
+                    message: responseJson.error
+                  });
+                } else {
+                  datasette.openPath(responseJson.path);
+                }
+              },
+            },
             {
               label: "Open CSV…",
               accelerator: "CommandOrControl+O",
