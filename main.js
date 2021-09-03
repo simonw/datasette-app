@@ -100,7 +100,7 @@ class DatasetteServer {
     await execFile(pip_path, [
       "install",
       "datasette==0.59a2",
-      "datasette-app-support>=0.2",
+      "datasette-app-support>=0.3",
     ]);
     await new Promise((resolve) => setTimeout(resolve, 500));
     return datasette_binary;
