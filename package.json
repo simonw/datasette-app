@@ -13,8 +13,18 @@
   "build": {
     "appId": "io.datasette.app",
     "mac": {
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime" : true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "binaries": [
+        "./dist/mac/Datasette.app/Contents/Resources/python/bin/python3.9",
+        "./dist/mac/Datasette.app/Contents/Resources/python/lib/python3.9/lib-dynload/xxlimited.cpython-39-darwin.so",
+        "./dist/mac/Datasette.app/Contents/Resources/python/lib/python3.9/lib-dynload/_testcapi.cpython-39-darwin.so"
+      ]
     },
+    "afterSign": "scripts/notarize.js",
     "extraResources": [
       {
         "from": "python",
@@ -34,6 +44,7 @@
   "devDependencies": {
     "electron": "^13.2.1",
     "electron-builder": "^22.11.7",
+    "electron-notarize": "^1.1.1",
     "mocha": "^9.1.0",
     "spectron": "^15.0.0"
   },
