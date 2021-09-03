@@ -107,13 +107,16 @@ class DatasetteServer {
   }
 
   openPath(path) {
-    path = path || '/';
+    path = path || "/";
     if (
       BrowserWindow.getAllWindows().length == 1 &&
       new URL(BrowserWindow.getFocusedWindow().webContents.getURL()).pathname ==
         "/"
     ) {
-      const url = new URL(path, BrowserWindow.getFocusedWindow().webContents.getURL());
+      const url = new URL(
+        path,
+        BrowserWindow.getFocusedWindow().webContents.getURL()
+      );
       BrowserWindow.getFocusedWindow().webContents.loadURL(url.toString());
     } else {
       let newWindow = new BrowserWindow({
@@ -274,7 +277,10 @@ function createWindow() {
               label: "New Empty Database…",
               accelerator: "CommandOrControl+Shift+N",
               click: async () => {
-                const filepath = dialog.showSaveDialogSync({defaultPath: "database.db", title: "Create Empty Database"})
+                const filepath = dialog.showSaveDialogSync({
+                  defaultPath: "database.db",
+                  title: "Create Empty Database",
+                });
                 const response = await request(
                   `http://localhost:${port}/-/new-empty-database-file`,
                   {
@@ -288,7 +294,7 @@ function createWindow() {
                   dialog.showMessageBox({
                     type: "error",
                     title: "Datasette",
-                    message: responseJson.error
+                    message: responseJson.error,
                   });
                 } else {
                   datasette.openPath(responseJson.path);
@@ -320,7 +326,7 @@ function createWindow() {
                     dialog.showMessageBox({
                       type: "error",
                       message: "Error opening CSV file",
-                      detail: responseJson.error
+                      detail: responseJson.error,
                     });
                   } else {
                     pathToOpen = responseJson.path;
@@ -356,7 +362,7 @@ function createWindow() {
                     dialog.showMessageBox({
                       type: "error",
                       message: "Error opening database file",
-                      detail: responseJson.error
+                      detail: responseJson.error,
                     });
                   } else {
                     pathToOpen = responseJson.path;
