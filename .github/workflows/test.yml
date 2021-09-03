@@ -34,6 +34,9 @@ jobs:
       - name: Run tests
         run: npm test
       - name: Build distribution
+        env:
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
         run: npm run dist
       - name: Create zip file
         run: |
