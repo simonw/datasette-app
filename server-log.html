@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>datasette server log</title>
+    <style>body { font-family: Helvetica, sans-serif }</style>
+  </head>
+  <body>
+    <h1>datasette server log</h1>
+    <pre id="logs"></pre>
+    <script>
+      const pre = document.getElementById("logs");
+      onLog((event, item) => {
+        const span = document.createElement("span");
+        span.style.color = item.type == "stderr" ? "red" : "black";
+        span.innerText = item.ts.toLocaleTimeString() + ": " + item.message + "\n";
+        pre.appendChild(span);
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+    </script>
+  </body>
+</html>

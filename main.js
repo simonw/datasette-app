@@ -248,7 +248,7 @@ async function initializeApp() {
   postConfigure(mainWindow);
   let freePort = null;
   try {
-    freePort = await portfinder.getPortPromise({port: 8001});
+    freePort = await portfinder.getPortPromise({ port: 8001 });
   } catch (err) {
     console.error("Failed to obtain a port", err);
     app.quit();
@@ -330,7 +330,7 @@ async function initializeApp() {
           label: "New Window",
           accelerator: "CommandOrControl+N",
           click() {
-            datasette.openWindow()
+            datasette.openWindow();
           },
         },
         { type: "separator" },
@@ -371,10 +371,9 @@ async function initializeApp() {
             }
             let pathToOpen = null;
             for (const filepath of selectedFiles) {
-              const response = await datasette.apiRequest(
-                "/-/open-csv-file",
-                { path: filepath }
-              );
+              const response = await datasette.apiRequest("/-/open-csv-file", {
+                path: filepath,
+              });
               const responseJson = await response.json();
               if (!responseJson.ok) {
                 console.log(responseJson);
@@ -508,6 +507,35 @@ async function initializeApp() {
             BrowserWindow.getFocusedWindow().webContents.openDevTools();
           },
         },
+        {
+          label: "Show Server Log",
+          click() {
+            /* Is it open already? */
+            let browserWindow = null;
+            let existing = BrowserWindow.getAllWindows().filter((bw) =>
+              bw.webContents.getURL().endsWith("/server-log.html")
+            );
+            if (existing.length) {
+              browserWindow = existing[0];
+              browserWindow.focus();
+            } else {
+              browserWindow = new BrowserWindow({
+                webPreferences: {
+                  preload: path.join(__dirname, "server-log-preload.js"),
+                },
+                ...windowOpts(),
+              });
+              browserWindow.loadFile("server-log.html");
+              datasette.on("log", (item) => {
+                !browserWindow.isDestroyed() &&
+                  browserWindow.webContents.send("log", item);
+              });
+              for (const item of datasette.cappedLog) {
+                browserWindow.webContents.send("log", item);
+              }
+            }
+          },
+        },
       ],
     });
   }
@@ -515,7 +543,7 @@ async function initializeApp() {
   Menu.setApplicationMenu(menu);
   // mainWindow.webContents.openDevTools()
   return datasette;
-};
+}
 
 app.whenReady().then(async () => {
   const datasette = await initializeApp();
