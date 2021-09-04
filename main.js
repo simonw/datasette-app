@@ -1,4 +1,5 @@
 const { app, Menu, BrowserWindow, dialog, shell } = require("electron");
+const crypto = require("crypto");
 const request = require("electron-request");
 const path = require("path");
 const cp = require("child_process");
@@ -40,6 +41,7 @@ class DatasetteServer {
     this.app = app;
     this.port = port;
     this.process = null;
+    this.apiToken = crypto.randomBytes(32).toString("hex");
   }
   async startOrRestart() {
     const datasette_bin = await this.ensureDatasetteInstalled();
@@ -53,7 +55,11 @@ class DatasetteServer {
       this.process.kill();
     }
     return new Promise((resolve, reject) => {
-      const process = cp.spawn(datasette_bin, args);
+      const process = cp.spawn(datasette_bin, args, {
+        env: {
+          DATASETTE_API_TOKEN: this.apiToken,
+        },
+      });
       this.process = process;
       process.stderr.on("data", (data) => {
         if (/Uvicorn running/.test(data)) {
@@ -70,6 +76,16 @@ class DatasetteServer {
 
   shutdown() {
     this.process.kill();
+  }
+
+  async apiRequest(path, body) {
+    return await request(`http://localhost:${this.port}${path}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        Authorization: `Bearer ${this.apiToken}`,
+      },
+    });
   }
 
   async installPlugin(plugin) {
@@ -186,9 +202,8 @@ function createWindow() {
         console.error("Failed to obtain a port", err);
         app.quit();
       }
-      port = freePort;
       // Start Python Datasette process
-      datasette = new DatasetteServer(app, port);
+      datasette = new DatasetteServer(app, freePort);
       const url = await datasette.startOrRestart();
       mainWindow.loadURL(url);
       app.on("will-quit", () => {
@@ -281,12 +296,9 @@ function createWindow() {
                   defaultPath: "database.db",
                   title: "Create Empty Database",
                 });
-                const response = await request(
-                  `http://localhost:${port}/-/new-empty-database-file`,
-                  {
-                    method: "POST",
-                    body: JSON.stringify({ path: filepath }),
-                  }
+                const response = await datasette.apiRequest(
+                  "/-/new-empty-database-file",
+                  { path: filepath }
                 );
                 const responseJson = await response.json();
                 if (!responseJson.ok) {
@@ -313,12 +325,9 @@ function createWindow() {
                 }
                 let pathToOpen = null;
                 for (const filepath of selectedFiles) {
-                  const response = await request(
-                    `http://localhost:${port}/-/open-csv-file`,
-                    {
-                      method: "POST",
-                      body: JSON.stringify({ path: filepath }),
-                    }
+                  const response = await datasette.apiRequest(
+                    "/-/open-csv-file",
+                    { path: filepath }
                   );
                   const responseJson = await response.json();
                   if (!responseJson.ok) {
@@ -349,12 +358,9 @@ function createWindow() {
                 }
                 let pathToOpen = null;
                 for (const filepath of selectedFiles) {
-                  const response = await request(
-                    `http://localhost:${port}/-/open-database-file`,
-                    {
-                      method: "POST",
-                      body: JSON.stringify({ path: filepath }),
-                    }
+                  const response = await datasette.apiRequest(
+                    "/-/open-database-file",
+                    { path: filepath }
                   );
                   const responseJson = await response.json();
                   if (!responseJson.ok) {
