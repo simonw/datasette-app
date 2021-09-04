@@ -1,4 +1,5 @@
 const { app, Menu, BrowserWindow, dialog, shell } = require("electron");
+const EventEmitter = require("events");
 const crypto = require("crypto");
 const request = require("electron-request");
 const path = require("path");
@@ -42,6 +43,26 @@ class DatasetteServer {
     this.port = port;
     this.process = null;
     this.apiToken = crypto.randomBytes(32).toString("hex");
+    this.logEmitter = new EventEmitter();
+    this.cappedLog = [];
+    this.cap = 1000;
+  }
+  on(event, listener) {
+    this.logEmitter.on(event, listener);
+  }
+  log(message, type) {
+    if (!message) {
+      return;
+    }
+    type ||= "stdout";
+    const item = {
+      message,
+      type,
+      ts: new Date(),
+    };
+    this.cappedLog.push(item);
+    this.logEmitter.emit("log", item);
+    this.cappedLog = this.cappedLog.slice(-this.cap);
   }
   async startOrRestart() {
     const datasette_bin = await this.ensureDatasetteInstalled();
@@ -64,6 +85,14 @@ class DatasetteServer {
       process.stderr.on("data", (data) => {
         if (/Uvicorn running/.test(data)) {
           resolve(`http://localhost:${this.port}/`);
+        }
+        for (const line of data.toString().split("\n")) {
+          this.log(line, 'stderr');
+        }
+      });
+      process.stdout.on("data", (data) => {
+        for (const line of data.toString().split("\n")) {
+          this.log(line);
         }
       });
       this.process.on("error", (err) => {
@@ -204,6 +233,9 @@ function createWindow() {
       }
       // Start Python Datasette process
       datasette = new DatasetteServer(app, freePort);
+      datasette.on("log", (item) => {
+        console.log(item);
+      })
       const url = await datasette.startOrRestart();
       mainWindow.loadURL(url);
       app.on("will-quit", () => {
