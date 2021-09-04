@@ -87,7 +87,7 @@ class DatasetteServer {
           resolve(`http://localhost:${this.port}/`);
         }
         for (const line of data.toString().split("\n")) {
-          this.log(line, 'stderr');
+          this.log(line, "stderr");
         }
       });
       process.stdout.on("data", (data) => {
@@ -235,7 +235,7 @@ function createWindow() {
       datasette = new DatasetteServer(app, freePort);
       datasette.on("log", (item) => {
         console.log(item);
-      })
+      });
       const url = await datasette.startOrRestart();
       mainWindow.loadURL(url);
       app.on("will-quit", () => {
@@ -492,6 +492,35 @@ function createWindow() {
               label: "Open DevTools",
               click() {
                 BrowserWindow.getFocusedWindow().webContents.openDevTools();
+              },
+            },
+            {
+              label: "Show Server Log",
+              click() {
+                /* Is it open already? */
+                let browserWindow = null;
+                let existing = BrowserWindow.getAllWindows().filter((bw) =>
+                  bw.webContents.getURL().endsWith("/server-log.html")
+                );
+                if (existing.length) {
+                  browserWindow = existing[0];
+                  browserWindow.focus();
+                } else {
+                  browserWindow = new BrowserWindow({
+                    webPreferences: {
+                      preload: path.join(__dirname, "server-log-preload.js"),
+                    },
+                    ...windowOpts(),
+                  });
+                  browserWindow.loadFile("server-log.html");
+                  datasette.on("log", (item) => {
+                    !browserWindow.isDestroyed() &&
+                      browserWindow.webContents.send("log", item);
+                  });
+                  for (const item of datasette.cappedLog) {
+                    browserWindow.webContents.send("log", item);
+                  }
+                }
               },
             },
           ],
