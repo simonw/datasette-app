@@ -153,24 +153,38 @@ class DatasetteServer {
     return datasette_binary;
   }
 
-  openPath(path) {
+  openPath(path, opts) {
     path = path || "/";
+    opts = opts || {};
+    const loadUrlOpts = {
+      extraHeaders: `authorization: Bearer ${this.apiToken}`,
+      method: "POST",
+      postData: [
+        {
+          type: "rawData",
+          bytes: Buffer.from(JSON.stringify({ redirect: path })),
+        },
+      ],
+    };
     if (
       BrowserWindow.getAllWindows().length == 1 &&
-      new URL(BrowserWindow.getFocusedWindow().webContents.getURL()).pathname ==
-        "/"
+      (opts.forceMainWindow ||
+        new URL(BrowserWindow.getFocusedWindow().webContents.getURL())
+          .pathname == "/")
     ) {
-      const url = new URL(
-        path,
-        BrowserWindow.getFocusedWindow().webContents.getURL()
+      BrowserWindow.getFocusedWindow().webContents.loadURL(
+        `http://localhost:${this.port}/-/auth-app-user`,
+        loadUrlOpts
       );
-      BrowserWindow.getFocusedWindow().webContents.loadURL(url.toString());
     } else {
       let newWindow = new BrowserWindow({
         ...windowOpts(),
         ...{ show: false },
       });
-      newWindow.loadURL(`http://localhost:${this.port}${path}`);
+      newWindow.loadURL(
+        `http://localhost:${this.port}/-/auth-app-user`,
+        loadUrlOpts
+      );
       newWindow.once("ready-to-show", () => {
         newWindow.show();
       });
@@ -234,8 +248,10 @@ async function initializeApp() {
   datasette.on("log", (item) => {
     console.log(item);
   });
-  const url = await datasette.startOrRestart();
-  mainWindow.loadURL(url);
+  await datasette.startOrRestart();
+  datasette.openPath("/", {
+    forceMainWindow: true,
+  });
   app.on("will-quit", () => {
     datasette.shutdown();
   });
