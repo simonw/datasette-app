@@ -283,7 +283,6 @@ async function initializeApp() {
   });
 
   ipcMain.on("import-csv", async (event, database) => {
-    console.log(event, database);
     let selectedFiles = dialog.showOpenDialogSync({
       properties: ["openFile"],
     });
