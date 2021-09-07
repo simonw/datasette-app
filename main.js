@@ -312,7 +312,7 @@ function createWindow() {
                   ...windowOpts(),
                   ...{ show: false },
                 });
-                newWindow.loadURL(`http://localhost:${port}`);
+                newWindow.loadURL(`http://localhost:${freePort}`);
                 newWindow.once("ready-to-show", () => {
                   newWindow.show();
                 });
@@ -468,7 +468,7 @@ function createWindow() {
                   ...windowOpts(),
                   ...{ show: false },
                 });
-                newWindow.loadURL(`http://localhost:${port}/-/plugins`);
+                newWindow.loadURL(`http://localhost:${freePort}/-/plugins`);
                 newWindow.once("ready-to-show", () => {
                   newWindow.show();
                 });
