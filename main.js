@@ -172,11 +172,13 @@ class DatasetteServer {
         new URL(BrowserWindow.getFocusedWindow().webContents.getURL())
           .pathname == "/")
     ) {
+      // Re-use the single existing window
       BrowserWindow.getFocusedWindow().webContents.loadURL(
         `http://localhost:${this.port}/-/auth-app-user`,
         loadUrlOpts
       );
     } else {
+      // Open a new window
       let newWindow = new BrowserWindow({
         ...windowOpts(),
         ...{ show: false },
@@ -222,8 +224,9 @@ function windowOpts() {
   return opts;
 }
 
+let datasette = null;
+
 async function initializeApp() {
-  let datasette = null;
   /* We don't use openPath here because we want to control the transition from the
      loading.html page to the index page once the server has started up */
   let mainWindow = new BrowserWindow({
@@ -243,8 +246,10 @@ async function initializeApp() {
     console.error("Failed to obtain a port", err);
     app.quit();
   }
-  // Start Python Datasette process
-  datasette = new DatasetteServer(app, freePort);
+  // Start Python Datasette process (if one is not yet running)
+  if (!datasette) {
+    datasette = new DatasetteServer(app, freePort);
+  }
   datasette.on("log", (item) => {
     console.log(item);
   });
@@ -544,7 +549,7 @@ async function initializeApp() {
 }
 
 app.whenReady().then(async () => {
-  const datasette = await initializeApp();
+  await initializeApp();
   app.on("activate", () => {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
