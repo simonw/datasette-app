@@ -208,12 +208,11 @@ function windowOpts() {
   return opts;
 }
 
-function createWindow() {
+async function initializeApp() {
   let datasette = null;
-  let port = null;
-  let mainWindow = null;
-
-  mainWindow = new BrowserWindow({
+  /* We don't use openPath here because we want to control the transition from the
+     loading.html page to the index page once the server has started up */
+  let mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     show: false,
@@ -223,325 +222,319 @@ function createWindow() {
     mainWindow.show();
   });
   configureWindow(mainWindow);
-
-  portfinder.getPort(
-    {
-      port: 8001,
+  let freePort = null;
+  try {
+    freePort = await portfinder.getPortPromise({ port: 8001 });
+  } catch (err) {
+    console.error("Failed to obtain a port", err);
+    app.quit();
+  }
+  // Start Python Datasette process
+  datasette = new DatasetteServer(app, freePort);
+  datasette.on("log", (item) => {
+    console.log(item);
+  });
+  const url = await datasette.startOrRestart();
+  mainWindow.loadURL(url);
+  app.on("will-quit", () => {
+    datasette.shutdown();
+  });
+  const homeItem = {
+    label: "Home",
+    click() {
+      let window = BrowserWindow.getFocusedWindow();
+      if (window) {
+        const url = new URL("/", window.webContents.getURL());
+        window.webContents.loadURL(url.toString());
+      }
     },
-    async (err, freePort) => {
-      if (err) {
-        console.error("Failed to obtain a port", err);
-        app.quit();
+  };
+  const backItem = {
+    label: "Back",
+    id: "back-item",
+    accelerator: "CommandOrControl+[",
+    click() {
+      let window = BrowserWindow.getFocusedWindow();
+      if (window) {
+        window.webContents.goBack();
       }
-      // Start Python Datasette process
-      datasette = new DatasetteServer(app, freePort);
-      datasette.on("log", (item) => {
-        console.log(item);
-      });
-      const url = await datasette.startOrRestart();
-      mainWindow.loadURL(url);
-      app.on("will-quit", () => {
-        datasette.shutdown();
-      });
-      const homeItem = {
-        label: "Home",
-        click() {
-          let window = BrowserWindow.getFocusedWindow();
-          if (window) {
-            const url = new URL("/", window.webContents.getURL());
-            window.webContents.loadURL(url.toString());
-          }
-        },
-      };
-      const backItem = {
-        label: "Back",
-        id: "back-item",
-        accelerator: "CommandOrControl+[",
-        click() {
-          let window = BrowserWindow.getFocusedWindow();
-          if (window) {
-            window.webContents.goBack();
-          }
-        },
-        enabled: false,
-      };
-      const forwardItem = {
-        label: "Forward",
-        id: "forward-item",
-        accelerator: "CommandOrControl+]",
-        click() {
-          let window = BrowserWindow.getFocusedWindow();
-          if (window) {
-            window.webContents.goForward();
-          }
-        },
-        enabled: false,
-      };
+    },
+    enabled: false,
+  };
+  const forwardItem = {
+    label: "Forward",
+    id: "forward-item",
+    accelerator: "CommandOrControl+]",
+    click() {
+      let window = BrowserWindow.getFocusedWindow();
+      if (window) {
+        window.webContents.goForward();
+      }
+    },
+    enabled: false,
+  };
 
-      app.on("browser-window-focus", (event, window) => {
-        forwardItem.enabled = window.webContents.canGoForward();
-        backItem.enabled = window.webContents.canGoBack();
-      });
+  app.on("browser-window-focus", (event, window) => {
+    forwardItem.enabled = window.webContents.canGoForward();
+    backItem.enabled = window.webContents.canGoBack();
+  });
 
-      let menuTemplate = [
+  let menuTemplate = [
+    {
+      label: "Menu",
+      submenu: [
         {
-          label: "Menu",
-          submenu: [
-            {
-              label: "About Datasette",
-              click() {
+          label: "About Datasette",
+          click() {
+            dialog.showMessageBox({
+              type: "info",
+              title: "Datasette",
+              message: cp.execSync("datasette --version").toString(),
+            });
+          },
+        },
+        { type: "separator" },
+        {
+          role: "quit",
+        },
+      ],
+    },
+    {
+      label: "File",
+      submenu: [
+        {
+          label: "New Window",
+          accelerator: "CommandOrControl+N",
+          click() {
+            let newWindow = new BrowserWindow({
+              ...windowOpts(),
+              ...{ show: false },
+            });
+            newWindow.loadURL(`http://localhost:${freePort}`);
+            newWindow.once("ready-to-show", () => {
+              newWindow.show();
+            });
+            configureWindow(newWindow);
+          },
+        },
+        { type: "separator" },
+        {
+          label: "New Empty Database…",
+          accelerator: "CommandOrControl+Shift+N",
+          click: async () => {
+            const filepath = dialog.showSaveDialogSync({
+              defaultPath: "database.db",
+              title: "Create Empty Database",
+            });
+            const response = await datasette.apiRequest(
+              "/-/new-empty-database-file",
+              { path: filepath }
+            );
+            const responseJson = await response.json();
+            if (!responseJson.ok) {
+              console.log(responseJson);
+              dialog.showMessageBox({
+                type: "error",
+                title: "Datasette",
+                message: responseJson.error,
+              });
+            } else {
+              datasette.openPath(responseJson.path);
+            }
+          },
+        },
+        {
+          label: "Open CSV…",
+          accelerator: "CommandOrControl+O",
+          click: async () => {
+            let selectedFiles = dialog.showOpenDialogSync({
+              properties: ["openFile", "multiSelections"],
+            });
+            if (!selectedFiles) {
+              return;
+            }
+            let pathToOpen = null;
+            for (const filepath of selectedFiles) {
+              const response = await datasette.apiRequest("/-/open-csv-file", {
+                path: filepath,
+              });
+              const responseJson = await response.json();
+              if (!responseJson.ok) {
+                console.log(responseJson);
                 dialog.showMessageBox({
-                  type: "info",
-                  title: "Datasette",
-                  message: cp.execSync("datasette --version").toString(),
+                  type: "error",
+                  message: "Error opening CSV file",
+                  detail: responseJson.error,
                 });
-              },
-            },
-            { type: "separator" },
-            {
-              role: "quit",
-            },
-          ],
+              } else {
+                pathToOpen = responseJson.path;
+              }
+            }
+            setTimeout(() => {
+              datasette.openPath(pathToOpen);
+            }, 500);
+          },
         },
         {
-          label: "File",
-          submenu: [
-            {
-              label: "New Window",
-              accelerator: "CommandOrControl+N",
-              click() {
-                let newWindow = new BrowserWindow({
-                  ...windowOpts(),
-                  ...{ show: false },
+          label: "Open Database…",
+          accelerator: "CommandOrControl+D",
+          click: async () => {
+            let selectedFiles = dialog.showOpenDialogSync({
+              properties: ["openFile", "multiSelections"],
+            });
+            if (!selectedFiles) {
+              return;
+            }
+            let pathToOpen = null;
+            for (const filepath of selectedFiles) {
+              const response = await datasette.apiRequest(
+                "/-/open-database-file",
+                { path: filepath }
+              );
+              const responseJson = await response.json();
+              if (!responseJson.ok) {
+                console.log(responseJson);
+                dialog.showMessageBox({
+                  type: "error",
+                  message: "Error opening database file",
+                  detail: responseJson.error,
                 });
-                newWindow.loadURL(`http://localhost:${freePort}`);
-                newWindow.once("ready-to-show", () => {
-                  newWindow.show();
-                });
-                configureWindow(newWindow);
-              },
-            },
-            { type: "separator" },
-            {
-              label: "New Empty Database…",
-              accelerator: "CommandOrControl+Shift+N",
-              click: async () => {
-                const filepath = dialog.showSaveDialogSync({
-                  defaultPath: "database.db",
-                  title: "Create Empty Database",
-                });
-                const response = await datasette.apiRequest(
-                  "/-/new-empty-database-file",
-                  { path: filepath }
-                );
-                const responseJson = await response.json();
-                if (!responseJson.ok) {
-                  console.log(responseJson);
-                  dialog.showMessageBox({
-                    type: "error",
-                    title: "Datasette",
-                    message: responseJson.error,
+              } else {
+                pathToOpen = responseJson.path;
+              }
+            }
+            setTimeout(() => {
+              datasette.openPath(pathToOpen);
+            }, 500);
+          },
+        },
+        { type: "separator" },
+        {
+          role: "close",
+        },
+      ],
+    },
+    {
+      label: "Navigate",
+      submenu: [
+        homeItem,
+        backItem,
+        forwardItem,
+        {
+          label: "Reload Current Page",
+          accelerator: "CommandOrControl+R",
+          click() {
+            let window = BrowserWindow.getFocusedWindow();
+            if (window) {
+              window.webContents.reload();
+            }
+          },
+        },
+      ],
+    },
+    {
+      label: "Plugins",
+      submenu: [
+        {
+          label: "Install Plugin…",
+          click() {
+            prompt({
+              title: "Install Plugin",
+              label: "Plugin name:",
+              value: "datasette-vega",
+              type: "input",
+              alwaysOnTop: true,
+            })
+              .then(async (pluginName) => {
+                if (pluginName !== null) {
+                  await datasette.installPlugin(pluginName);
+                  await datasette.startOrRestart();
+                  dialog.showMessageBoxSync({
+                    type: "info",
+                    message: "Plugin installed",
                   });
-                } else {
-                  datasette.openPath(responseJson.path);
                 }
-              },
-            },
-            {
-              label: "Open CSV…",
-              accelerator: "CommandOrControl+O",
-              click: async () => {
-                let selectedFiles = dialog.showOpenDialogSync({
-                  properties: ["openFile", "multiSelections"],
-                });
-                if (!selectedFiles) {
-                  return;
-                }
-                let pathToOpen = null;
-                for (const filepath of selectedFiles) {
-                  const response = await datasette.apiRequest(
-                    "/-/open-csv-file",
-                    { path: filepath }
-                  );
-                  const responseJson = await response.json();
-                  if (!responseJson.ok) {
-                    console.log(responseJson);
-                    dialog.showMessageBox({
-                      type: "error",
-                      message: "Error opening CSV file",
-                      detail: responseJson.error,
-                    });
-                  } else {
-                    pathToOpen = responseJson.path;
-                  }
-                }
-                setTimeout(() => {
-                  datasette.openPath(pathToOpen);
-                }, 500);
-              },
-            },
-            {
-              label: "Open Database…",
-              accelerator: "CommandOrControl+D",
-              click: async () => {
-                let selectedFiles = dialog.showOpenDialogSync({
-                  properties: ["openFile", "multiSelections"],
-                });
-                if (!selectedFiles) {
-                  return;
-                }
-                let pathToOpen = null;
-                for (const filepath of selectedFiles) {
-                  const response = await datasette.apiRequest(
-                    "/-/open-database-file",
-                    { path: filepath }
-                  );
-                  const responseJson = await response.json();
-                  if (!responseJson.ok) {
-                    console.log(responseJson);
-                    dialog.showMessageBox({
-                      type: "error",
-                      message: "Error opening database file",
-                      detail: responseJson.error,
-                    });
-                  } else {
-                    pathToOpen = responseJson.path;
-                  }
-                }
-                setTimeout(() => {
-                  datasette.openPath(pathToOpen);
-                }, 500);
-              },
-            },
-            { type: "separator" },
-            {
-              role: "close",
-            },
-          ],
+              })
+              .catch(console.error);
+          },
         },
         {
-          label: "Navigate",
-          submenu: [
-            homeItem,
-            backItem,
-            forwardItem,
-            {
-              label: "Reload Current Page",
-              accelerator: "CommandOrControl+R",
-              click() {
-                let window = BrowserWindow.getFocusedWindow();
-                if (window) {
-                  window.webContents.reload();
-                }
-              },
-            },
-          ],
+          label: "List Installed Plugins",
+          click() {
+            let newWindow = new BrowserWindow({
+              ...windowOpts(),
+              ...{ show: false },
+            });
+            newWindow.loadURL(`http://localhost:${freePort}/-/plugins`);
+            newWindow.once("ready-to-show", () => {
+              newWindow.show();
+            });
+            configureWindow(newWindow);
+          },
         },
         {
-          label: "Plugins",
-          submenu: [
-            {
-              label: "Install Plugin…",
-              click() {
-                prompt({
-                  title: "Install Plugin",
-                  label: "Plugin name:",
-                  value: "datasette-vega",
-                  type: "input",
-                  alwaysOnTop: true,
-                })
-                  .then(async (pluginName) => {
-                    if (pluginName !== null) {
-                      await datasette.installPlugin(pluginName);
-                      await datasette.startOrRestart();
-                      dialog.showMessageBoxSync({
-                        type: "info",
-                        message: "Plugin installed",
-                      });
-                    }
-                  })
-                  .catch(console.error);
-              },
-            },
-            {
-              label: "List Installed Plugins",
-              click() {
-                let newWindow = new BrowserWindow({
-                  ...windowOpts(),
-                  ...{ show: false },
-                });
-                newWindow.loadURL(`http://localhost:${freePort}/-/plugins`);
-                newWindow.once("ready-to-show", () => {
-                  newWindow.show();
-                });
-                configureWindow(newWindow);
-              },
-            },
-            {
-              label: "Plugins Directory",
-              click() {
-                shell.openExternal("https://datasette.io/plugins");
-              },
-            },
-          ],
+          label: "Plugins Directory",
+          click() {
+            shell.openExternal("https://datasette.io/plugins");
+          },
         },
-      ];
-      if (process.env.DEBUGMENU) {
-        menuTemplate.push({
-          label: "Debug",
-          submenu: [
-            {
-              label: "Open DevTools",
-              click() {
-                BrowserWindow.getFocusedWindow().webContents.openDevTools();
-              },
-            },
-            {
-              label: "Show Server Log",
-              click() {
-                /* Is it open already? */
-                let browserWindow = null;
-                let existing = BrowserWindow.getAllWindows().filter((bw) =>
-                  bw.webContents.getURL().endsWith("/server-log.html")
-                );
-                if (existing.length) {
-                  browserWindow = existing[0];
-                  browserWindow.focus();
-                } else {
-                  browserWindow = new BrowserWindow({
-                    webPreferences: {
-                      preload: path.join(__dirname, "server-log-preload.js"),
-                    },
-                    ...windowOpts(),
-                  });
-                  browserWindow.loadFile("server-log.html");
-                  datasette.on("log", (item) => {
-                    !browserWindow.isDestroyed() &&
-                      browserWindow.webContents.send("log", item);
-                  });
-                  for (const item of datasette.cappedLog) {
-                    browserWindow.webContents.send("log", item);
-                  }
-                }
-              },
-            },
-          ],
-        });
-      }
-      var menu = Menu.buildFromTemplate(menuTemplate);
-      Menu.setApplicationMenu(menu);
-    }
-  );
-  // mainWindow.webContents.openDevTools()
+      ],
+    },
+  ];
+  if (process.env.DEBUGMENU) {
+    menuTemplate.push({
+      label: "Debug",
+      submenu: [
+        {
+          label: "Open DevTools",
+          click() {
+            BrowserWindow.getFocusedWindow().webContents.openDevTools();
+          },
+        },
+        {
+          label: "Show Server Log",
+          click() {
+            /* Is it open already? */
+            let browserWindow = null;
+            let existing = BrowserWindow.getAllWindows().filter((bw) =>
+              bw.webContents.getURL().endsWith("/server-log.html")
+            );
+            if (existing.length) {
+              browserWindow = existing[0];
+              browserWindow.focus();
+            } else {
+              browserWindow = new BrowserWindow({
+                webPreferences: {
+                  preload: path.join(__dirname, "server-log-preload.js"),
+                },
+                ...windowOpts(),
+              });
+              browserWindow.loadFile("server-log.html");
+              datasette.on("log", (item) => {
+                !browserWindow.isDestroyed() &&
+                  browserWindow.webContents.send("log", item);
+              });
+              for (const item of datasette.cappedLog) {
+                browserWindow.webContents.send("log", item);
+              }
+            }
+          },
+        },
+      ],
+    });
+  }
+  var menu = Menu.buildFromTemplate(menuTemplate);
+  Menu.setApplicationMenu(menu);
 }
 
-app.whenReady().then(() => {
-  createWindow();
-
-  app.on("activate", function () {
+app.whenReady().then(async () => {
+  const datasette = await initializeApp();
+  app.on("activate", () => {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      datasette.openPath("/");
+    }
   });
 });
 
