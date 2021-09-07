@@ -1,3 +1,9 @@
-window.addEventListener('DOMContentLoaded', () => {
-  // Can access both Node.js and browser APIs
+const { ipcRenderer, contextBridge } = require("electron");
+contextBridge.exposeInMainWorld("datasetteApp", {
+  importCsv: (database) => {
+    ipcRenderer.send("import-csv", database);
+  },
+});
+ipcRenderer.on("csv-imported", () => {
+  location.reload();
 });

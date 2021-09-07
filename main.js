@@ -1,4 +1,11 @@
-const { app, Menu, BrowserWindow, dialog, shell } = require("electron");
+const {
+  app,
+  Menu,
+  BrowserWindow,
+  dialog,
+  shell,
+  ipcMain,
+} = require("electron");
 const EventEmitter = require("events");
 const crypto = require("crypto");
 const request = require("electron-request");
@@ -159,7 +166,7 @@ class DatasetteServer {
     await execFile(pip_path, [
       "install",
       "datasette==0.59a2",
-      "datasette-app-support>=0.3",
+      "datasette-app-support>=0.5",
     ]);
     await new Promise((resolve) => setTimeout(resolve, 500));
     return datasette_binary;
@@ -227,6 +234,9 @@ function windowOpts() {
   let opts = {
     width: 800,
     height: 600,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+    },
   };
   if (BrowserWindow.getFocusedWindow()) {
     const pos = BrowserWindow.getFocusedWindow().getPosition();
@@ -242,9 +252,8 @@ async function initializeApp() {
   /* We don't use openPath here because we want to control the transition from the
      loading.html page to the index page once the server has started up */
   let mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
     show: false,
+    ...windowOpts(),
   });
   mainWindow.loadFile("loading.html");
   mainWindow.once("ready-to-show", () => {
@@ -272,6 +281,37 @@ async function initializeApp() {
   app.on("will-quit", () => {
     datasette.shutdown();
   });
+
+  ipcMain.on("import-csv", async (event, database) => {
+    console.log(event, database);
+    let selectedFiles = dialog.showOpenDialogSync({
+      properties: ["openFile"],
+    });
+    if (!selectedFiles) {
+      return;
+    }
+    let pathToOpen = null;
+    const response = await datasette.apiRequest("/-/import-csv-file", {
+      path: selectedFiles[0],
+      database: database,
+    });
+    const responseJson = await response.json();
+    if (!responseJson.ok) {
+      console.log(responseJson);
+      dialog.showMessageBox({
+        type: "error",
+        message: "Error importing CSV file",
+        detail: responseJson.error,
+      });
+    } else {
+      pathToOpen = responseJson.path;
+    }
+    setTimeout(() => {
+      datasette.openPath(pathToOpen);
+    }, 500);
+    event.reply("csv-imported", database);
+  });
+
   const homeItem = {
     label: "Home",
     click() {
