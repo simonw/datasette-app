@@ -12,16 +12,18 @@ const util = require("util");
 const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
 
-function postConfigure(mainWindow) {
-  mainWindow.webContents.on("will-navigate", function (event, reqUrl) {
+function configureWindow(window) {
+  window.webContents.on("will-navigate", function (event, reqUrl) {
+    // Links to external sites should open in system browser
     let requestedHost = new URL(reqUrl).host;
-    let currentHost = new URL(mainWindow.webContents.getURL()).host;
+    let currentHost = new URL(window.webContents.getURL()).host;
     if (requestedHost && requestedHost != currentHost) {
       event.preventDefault();
       shell.openExternal(reqUrl);
     }
   });
-  mainWindow.webContents.on("did-navigate", (event, reqUrl) => {
+  window.webContents.on("did-navigate", (event, reqUrl) => {
+    // Update back/forward button enable status
     let menu = Menu.getApplicationMenu();
     if (!menu) {
       return;
@@ -29,10 +31,10 @@ function postConfigure(mainWindow) {
     let backItem = menu.getMenuItemById("back-item");
     let forwardItem = menu.getMenuItemById("forward-item");
     if (backItem) {
-      backItem.enabled = mainWindow.webContents.canGoBack();
+      backItem.enabled = window.webContents.canGoBack();
     }
     if (forwardItem) {
-      forwardItem.enabled = mainWindow.webContents.canGoForward();
+      forwardItem.enabled = window.webContents.canGoForward();
     }
   });
 }
@@ -172,7 +174,7 @@ class DatasetteServer {
       newWindow.once("ready-to-show", () => {
         newWindow.show();
       });
-      postConfigure(newWindow);
+      configureWindow(newWindow);
     }
   }
 }
@@ -220,7 +222,7 @@ function createWindow() {
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
-  postConfigure(mainWindow);
+  configureWindow(mainWindow);
 
   portfinder.getPort(
     {
@@ -316,7 +318,7 @@ function createWindow() {
                 newWindow.once("ready-to-show", () => {
                   newWindow.show();
                 });
-                postConfigure(newWindow);
+                configureWindow(newWindow);
               },
             },
             { type: "separator" },
@@ -472,7 +474,7 @@ function createWindow() {
                 newWindow.once("ready-to-show", () => {
                   newWindow.show();
                 });
-                postConfigure(newWindow);
+                configureWindow(newWindow);
               },
             },
             {
