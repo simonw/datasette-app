@@ -73,6 +73,18 @@ class DatasetteServer {
       this.port,
       "--version-note",
       "xyz-for-datasette-app",
+      "--setting",
+      "sql_time_limit_ms",
+      "10000",
+      "--setting",
+      "max_returned_rows",
+      "2000",
+      "--setting",
+      "facet_time_limit_ms",
+      "1000",
+      "--setting",
+      "max_csv_mb",
+      "0",
     ];
     if (this.process) {
       this.process.kill();
