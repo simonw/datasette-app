@@ -66,7 +66,7 @@ class DatasetteServer {
     }
     type ||= "stdout";
     const item = {
-      message,
+      message: message.replace('INFO:     ', ''),
       type,
       ts: new Date(),
     };
@@ -233,12 +233,13 @@ function findPython() {
   app.quit();
 }
 
-function windowOpts() {
+function windowOpts(extraOpts) {
+  extraOpts = extraOpts || {};
   let opts = {
     width: 800,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, extraOpts.preload || "preload.js"),
     },
   };
   if (BrowserWindow.getFocusedWindow()) {
@@ -616,12 +617,11 @@ async function initializeApp() {
               browserWindow = existing[0];
               browserWindow.focus();
             } else {
-              browserWindow = new BrowserWindow({
-                webPreferences: {
-                  preload: path.join(__dirname, "server-log-preload.js"),
-                },
-                ...windowOpts(),
-              });
+              browserWindow = new BrowserWindow(
+                windowOpts({
+                  preload: "server-log-preload.js",
+                })
+              );
               browserWindow.loadFile("server-log.html");
               datasette.on("log", (item) => {
                 !browserWindow.isDestroyed() &&
