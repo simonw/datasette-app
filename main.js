@@ -55,10 +55,18 @@ class DatasetteServer {
     this.apiToken = crypto.randomBytes(32).toString("hex");
     this.logEmitter = new EventEmitter();
     this.cappedLog = [];
+    this.accessControl = "localhost";
     this.cap = 1000;
   }
   on(event, listener) {
     this.logEmitter.on(event, listener);
+  }
+  async setAccessControl(accessControl) {
+    if (accessControl == this.accessControl) {
+      return;
+    }
+    this.accessControl = accessControl;
+    await this.startOrRestart();
   }
   log(message, type) {
     if (!message) {
@@ -75,7 +83,7 @@ class DatasetteServer {
     this.cappedLog = this.cappedLog.slice(-this.cap);
   }
   serverArgs() {
-    return [
+    const args = [
       "--port",
       this.port,
       "--version-note",
@@ -93,6 +101,10 @@ class DatasetteServer {
       "max_csv_mb",
       "0",
     ];
+    if (this.accessControl == "network") {
+      args.push("--host", "0.0.0.0");
+    }
+    return args;
   }
   async startOrRestart() {
     const datasette_bin = await this.ensureDatasetteInstalled();
@@ -355,6 +367,27 @@ async function initializeApp() {
     backItem.enabled = window.webContents.canGoBack();
   });
 
+  function buildNetworkChanged(setting) {
+    return async function () {
+      /* Will log either "localhost" or "network" */
+      console.log(setting);
+      await datasette.setAccessControl(setting);
+    };
+  }
+
+  const onlyMyComputer = {
+    label: "Only my computer",
+    type: "radio",
+    checked: true,
+    click: buildNetworkChanged("localhost"),
+  };
+  const anyoneOnNetwork = {
+    label: "Anyone on my networks",
+    type: "radio",
+    checked: false,
+    click: buildNetworkChanged("network"),
+  };
+
   let menuTemplate = [
     {
       label: "Menu",
@@ -483,6 +516,21 @@ async function initializeApp() {
               datasette.openPath(pathToOpen);
             }, 500);
           },
+        },
+        { type: "separator" },
+        {
+          label: "Access Control",
+          submenu: [
+            onlyMyComputer,
+            anyoneOnNetwork,
+            { type: "separator" },
+            {
+              label: "Open in Browser",
+              click() {
+                shell.openExternal(`http://localhost:${freePort}/`);
+              },
+            },
+          ],
         },
         { type: "separator" },
         {
