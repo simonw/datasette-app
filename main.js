@@ -11,6 +11,7 @@ const EventEmitter = require("events");
 const crypto = require("crypto");
 const request = require("electron-request");
 const path = require("path");
+const os = require("os");
 const cp = require("child_process");
 const portfinder = require("portfinder");
 const prompt = require("electron-prompt");
@@ -326,7 +327,12 @@ async function initializeApp() {
     }, 500);
     event.reply("csv-imported", database);
   });
+  let menuTemplate = buildMenu();
+  var menu = Menu.buildFromTemplate(menuTemplate);
+  Menu.setApplicationMenu(menu);
+}
 
+function buildMenu() {
   const homeItem = {
     label: "Home",
     click() {
@@ -369,26 +375,58 @@ async function initializeApp() {
 
   function buildNetworkChanged(setting) {
     return async function () {
-      /* Will log either "localhost" or "network" */
-      console.log(setting);
       await datasette.setAccessControl(setting);
+      Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenu()));
     };
   }
 
   const onlyMyComputer = {
     label: "Only my computer",
     type: "radio",
-    checked: true,
+    checked: datasette.accessControl == "localhost",
     click: buildNetworkChanged("localhost"),
   };
   const anyoneOnNetwork = {
     label: "Anyone on my networks",
     type: "radio",
-    checked: false,
+    checked: datasette.accessControl == "network",
     click: buildNetworkChanged("network"),
   };
 
-  let menuTemplate = [
+  // Gather IPv4 addresses
+  const ips = new Set();
+  for (const [key, networkIps] of Object.entries(os.networkInterfaces())) {
+    networkIps.forEach((details) => {
+      const ip = details.address;
+      if (details.family == "IPv4" && ip != "127.0.0.1") {
+        ips.add(ip);
+      }
+    });
+  }
+
+  const accessControlItems = [
+    onlyMyComputer,
+    anyoneOnNetwork,
+    { type: "separator" },
+    {
+      label: "Open in Browser",
+      click() {
+        shell.openExternal(`http://localhost:${datasette.port}/`);
+      },
+    },
+  ];
+  if (datasette.accessControl == "network") {
+    for (let ip of ips) {
+      accessControlItems.push({
+        label: `Copy http://${ip}:${datasette.port}/`,
+        click() {
+          clipboard.writeText(`http://${ip}:${datasette.port}/`);
+        },
+      });
+    }
+  }
+
+  const menuTemplate = [
     {
       label: "Menu",
       submenu: [
@@ -419,7 +457,7 @@ async function initializeApp() {
               ...windowOpts(),
               ...{ show: false },
             });
-            newWindow.loadURL(`http://localhost:${freePort}`);
+            newWindow.loadURL(`http://localhost:${datasette.port}`);
             newWindow.once("ready-to-show", () => {
               newWindow.show();
             });
@@ -520,17 +558,7 @@ async function initializeApp() {
         { type: "separator" },
         {
           label: "Access Control",
-          submenu: [
-            onlyMyComputer,
-            anyoneOnNetwork,
-            { type: "separator" },
-            {
-              label: "Open in Browser",
-              click() {
-                shell.openExternal(`http://localhost:${freePort}/`);
-              },
-            },
-          ],
+          submenu: accessControlItems,
         },
         { type: "separator" },
         {
@@ -590,7 +618,7 @@ async function initializeApp() {
               ...windowOpts(),
               ...{ show: false },
             });
-            newWindow.loadURL(`http://localhost:${freePort}/-/plugins`);
+            newWindow.loadURL(`http://localhost:${datasette.port}/-/plugins`);
             newWindow.once("ready-to-show", () => {
               newWindow.show();
             });
@@ -658,8 +686,7 @@ async function initializeApp() {
       ],
     });
   }
-  var menu = Menu.buildFromTemplate(menuTemplate);
-  Menu.setApplicationMenu(menu);
+  return menuTemplate;
 }
 
 app.whenReady().then(async () => {
