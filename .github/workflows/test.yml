@@ -5,7 +5,6 @@ on: push
 jobs:
   test:
     runs-on: macos-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v2
       - name: Configure Node caching
@@ -33,6 +32,7 @@ jobs:
           ./download-python.sh
       - name: Run tests
         run: npm test
+        timeout-minutes: 5
       - name: Build distribution
         env:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
