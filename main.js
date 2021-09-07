@@ -1,5 +1,6 @@
 const {
   app,
+  clipboard,
   Menu,
   BrowserWindow,
   dialog,
@@ -73,9 +74,8 @@ class DatasetteServer {
     this.logEmitter.emit("log", item);
     this.cappedLog = this.cappedLog.slice(-this.cap);
   }
-  async startOrRestart() {
-    const datasette_bin = await this.ensureDatasetteInstalled();
-    const args = [
+  serverArgs() {
+    return [
       "--port",
       this.port,
       "--version-note",
@@ -93,11 +93,14 @@ class DatasetteServer {
       "max_csv_mb",
       "0",
     ];
+  }
+  async startOrRestart() {
+    const datasette_bin = await this.ensureDatasetteInstalled();
     if (this.process) {
       this.process.kill();
     }
     return new Promise((resolve, reject) => {
-      const process = cp.spawn(datasette_bin, args, {
+      const process = cp.spawn(datasette_bin, this.serverArgs(), {
         env: {
           DATASETTE_API_TOKEN: this.apiToken,
         },
@@ -628,6 +631,17 @@ async function initializeApp() {
                 browserWindow.webContents.send("log", item);
               }
             }
+          },
+        },
+        {
+          label: "Stop Server and Copy Command",
+          click() {
+            datasette.process.kill();
+            clipboard.writeText(
+              `DATASETTE_API_TOKEN=${datasette.apiToken} datasette ${datasette
+                .serverArgs()
+                .join(" ")}`
+            );
           },
         },
       ],
