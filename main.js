@@ -473,6 +473,9 @@ function buildMenu() {
               defaultPath: "database.db",
               title: "Create Empty Database",
             });
+            if (!filepath) {
+              return;
+            }
             const response = await datasette.apiRequest(
               "/-/new-empty-database-file",
               { path: filepath }
