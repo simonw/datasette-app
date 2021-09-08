@@ -221,7 +221,7 @@ class DatasetteServer {
           .pathname == "/")
     ) {
       // Re-use the single existing window
-      BrowserWindow.getFocusedWindow().webContents.loadURL(
+      BrowserWindow.getAllWindows()[0].webContents.loadURL(
         `http://localhost:${this.port}/-/auth-app-user`,
         loadUrlOpts
       );
