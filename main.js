@@ -21,6 +21,8 @@ const util = require("util");
 const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
 
+const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
+
 function configureWindow(window) {
   window.webContents.on("will-navigate", function (event, reqUrl) {
     // Links to external sites should open in system browser
@@ -129,6 +131,7 @@ class DatasetteServer {
       const process = cp.spawn(datasette_bin, this.serverArgs(), {
         env: {
           DATASETTE_API_TOKEN: this.apiToken,
+          DATASETTE_SECRET: RANDOM_SECRET,
         },
       });
       this.process = process;
