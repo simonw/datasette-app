@@ -62,6 +62,19 @@ class DatasetteServer {
   on(event, listener) {
     this.logEmitter.on(event, listener);
   }
+  async about() {
+    const response = await request(
+      `http://localhost:${this.port}/-/versions.json`
+    );
+    const data = await response.json();
+    return [
+      "An open source multi-tool for exploring and publishing data",
+      "",
+      `Datasette: ${data.datasette.version}`,
+      `Python: ${data.python.version}`,
+      `SQLite: ${data.sqlite.version}`,
+    ].join("\n");
+  }
   async setAccessControl(accessControl) {
     if (accessControl == this.accessControl) {
       return;
@@ -432,12 +445,20 @@ function buildMenu() {
       submenu: [
         {
           label: "About Datasette",
-          click() {
-            dialog.showMessageBox({
-              type: "info",
-              title: "Datasette",
-              message: cp.execSync("datasette --version").toString(),
-            });
+          async click() {
+            dialog
+              .showMessageBox({
+                type: "info",
+                message: "About Datasette",
+                detail: await datasette.about(),
+                buttons: ["Visit datasette.io", "OK"],
+              })
+              .then((click) => {
+                console.log(click);
+                if (click.response == 0) {
+                  shell.openExternal("https://datasette.io/");
+                }
+              });
           },
         },
         { type: "separator" },
