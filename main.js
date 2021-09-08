@@ -23,6 +23,8 @@ const mkdir = util.promisify(fs.mkdir);
 
 const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
 
+let enableDebugMenu = !!process.env.DEBUGMENU;
+
 function configureWindow(window) {
   window.webContents.on("will-navigate", function (event, reqUrl) {
     // Links to external sites should open in system browser
@@ -449,17 +451,25 @@ function buildMenu() {
         {
           label: "About Datasette",
           async click() {
+            let buttons = ["Visit datasette.io", "OK"];
+            if (!enableDebugMenu) {
+              buttons.push("Enable Debug Menu");
+            }
             dialog
               .showMessageBox({
                 type: "info",
                 message: "About Datasette",
                 detail: await datasette.about(),
-                buttons: ["Visit datasette.io", "OK"],
+                buttons: buttons,
               })
               .then((click) => {
                 console.log(click);
                 if (click.response == 0) {
                   shell.openExternal("https://datasette.io/");
+                }
+                if (click.response == 2) {
+                  enableDebugMenu = true;
+                  Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenu()));
                 }
               });
           },
@@ -661,7 +671,7 @@ function buildMenu() {
       ],
     },
   ];
-  if (process.env.DEBUGMENU) {
+  if (enableDebugMenu) {
     menuTemplate.push({
       label: "Debug",
       submenu: [
