@@ -529,6 +529,7 @@ function buildMenu() {
             }
             let pathToOpen = null;
             for (const filepath of selectedFiles) {
+              app.addRecentDocument(filepath);
               const response = await datasette.apiRequest("/-/open-csv-file", {
                 path: filepath,
               });
@@ -732,4 +733,24 @@ app.whenReady().then(async () => {
 // explicitly with Cmd + Q.
 app.on("window-all-closed", function () {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("open-file", async (event, filepath) => {
+  const response = await datasette.apiRequest("/-/open-csv-file", {
+    path: filepath,
+  });
+  const responseJson = await response.json();
+  if (!responseJson.ok) {
+    console.log(responseJson);
+    dialog.showMessageBox({
+      type: "error",
+      message: "Error opening CSV file",
+      detail: responseJson.error,
+    });
+  } else {
+    pathToOpen = responseJson.path;
+  }
+  setTimeout(() => {
+    datasette.openPath(pathToOpen);
+  });
 });
