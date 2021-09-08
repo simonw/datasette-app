@@ -551,6 +551,13 @@ function buildMenu() {
           },
         },
         {
+          label: "Open Recent CSV",
+          role: "recentdocuments",
+          submenu: [
+            { label: "Clear Recent Items", role: "clearrecentdocuments" },
+          ],
+        },
+        {
           label: "Open Database…",
           accelerator: "CommandOrControl+D",
           click: async () => {
