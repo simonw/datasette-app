@@ -1,6 +1,23 @@
-# datasette-app
+# Datasette Desktop
 
-An Electron app that wraps [Datasette](https://datasette.io/). See [Building a desktop application for Datasette](https://simonwillison.net/2021/Aug/30/datasette-app/) for background on this project.
+A macOS desktop application that wraps [Datasette](https://datasette.io/). See [Building a desktop application for Datasette](https://simonwillison.net/2021/Aug/30/datasette-app/) for background on this project.
+
+## Installation
+
+Grab the latest release from [the releases page](https://github.com/simonw/datasette-app/releases). Download `Datasette.app.zip`, uncompress it and drag `Datasette.app` to your `/Applications` folder - then double-click the icon.
+
+The first time you launch the app it will install the latest version of Datasette, which could take a little while. Subsequent application launches will be a lot quicker.
+
+## Application features
+
+- Includes a full copy of Python which stays separate from any other Python versions you may have installed
+- Installs the latest Datasette release the first time it runs
+- The application can open existing SQLite database files or read CSV files into an in-memory database
+- It can also create a new, empty SQLite database file and create tables in that database by importing CSV data
+- By default the server only accepts connections from your computer, but you can use "File -> Access Control -> Anyone on my networks" to make it visible to other computers on your network (or devices on your [Tailscale](https://tailscale.com/) network).
+- Datasette plugins can be installed using the "Install Plugin" menu item
+
+## How it works
 
 The app consists of two parts: the Electron app, and a custom Datasette plugin called [datasette-app-support](https://github.com/simonw/datasette-app-support).
 
