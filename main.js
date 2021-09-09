@@ -23,6 +23,11 @@ const mkdir = util.promisify(fs.mkdir);
 
 const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
 
+const minPackageVersions = {
+  datasette: "0.59a2",
+  "datasette-app-support": "0.6",
+};
+
 let enableDebugMenu = !!process.env.DEBUGMENU;
 
 function configureWindow(window) {
@@ -125,7 +130,9 @@ class DatasetteServer {
     return args;
   }
   async startOrRestart() {
-    const datasette_bin = await this.ensureDatasetteInstalled();
+    const venv_dir = await this.ensureVenv();
+    await this.ensurePackagesInstalled();
+    const datasette_bin = path.join(venv_dir, "bin", "datasette");
     if (this.process) {
       this.process.kill();
     }
@@ -183,27 +190,43 @@ class DatasetteServer {
     await execFile(pip_binary, ["install", plugin]);
   }
 
-  async ensureDatasetteInstalled() {
+  async packageVersions() {
+    const venv_dir = await this.ensureVenv();
+    const pip_path = path.join(venv_dir, "bin", "pip");
+    const versionsProcess = await execFile(pip_path, [
+      "list",
+      "--format",
+      "json",
+    ]);
+    const versions = {};
+    for (const item of JSON.parse(versionsProcess.stdout)) {
+      versions[item.name] = item.version;
+    }
+    return versions;
+  }
+
+  async ensureVenv() {
     const datasette_app_dir = path.join(process.env.HOME, ".datasette-app");
     const venv_dir = path.join(datasette_app_dir, "venv");
-    const datasette_binary = path.join(venv_dir, "bin", "datasette");
-    if (fs.existsSync(datasette_binary)) {
-      return datasette_binary;
-    }
     if (!fs.existsSync(datasette_app_dir)) {
       await mkdir(datasette_app_dir);
     }
     if (!fs.existsSync(venv_dir)) {
       await execFile(findPython(), ["-m", "venv", venv_dir]);
     }
+    return venv_dir;
+  }
+
+  async ensurePackagesInstalled() {
+    const venv_dir = await this.ensureVenv();
+    // Anything need installing or upgrading?
+    const needsInstall = [];
+    for (const [name, requiredVersion] of Object.entries(minPackageVersions)) {
+      needsInstall.push(`${name}>=${requiredVersion}`);
+    }
     const pip_path = path.join(venv_dir, "bin", "pip");
-    await execFile(pip_path, [
-      "install",
-      "datasette==0.59a2",
-      "datasette-app-support>=0.5",
-    ]);
+    await execFile(pip_path, ["install"].concat(needsInstall));
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return datasette_binary;
   }
 
   openPath(path, opts) {
@@ -681,6 +704,21 @@ function buildMenu() {
             BrowserWindow.getFocusedWindow().webContents.openDevTools();
           },
         },
+        {
+          label: "Package Versions",
+          async click() {
+            dialog.showMessageBox({
+              type: "info",
+              message: "Package Versions",
+              detail: JSON.stringify(
+                await datasette.packageVersions(),
+                null,
+                2
+              ),
+            });
+          },
+        },
+
         {
           label: "Show Server Log",
           click() {
