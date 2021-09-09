@@ -26,6 +26,11 @@ const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
 const minPackageVersions = {
   datasette: "0.59a2",
   "datasette-app-support": "0.6",
+  "datasette-vega": "0.6.2",
+  "datasette-cluster-map": "0.17.1",
+  "datasette-pretty-json": "0.2.1",
+  "datasette-edit-schema": "0.4",
+  "datasette-configure-fts": "1.1",
 };
 
 let enableDebugMenu = !!process.env.DEBUGMENU;
