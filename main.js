@@ -16,13 +16,16 @@ const cp = require("child_process");
 const portfinder = require("portfinder");
 const prompt = require("electron-prompt");
 const fs = require("fs");
-const { unlink } = require('fs/promises');
+const { unlink } = require("fs/promises");
 const util = require("util");
 
 const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
 
 const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
+
+// 'SQLite format 3\0':
+const SQLITE_HEADER = Buffer.from("53514c69746520666f726d6174203300", "hex");
 
 const minPackageVersions = {
   datasette: "0.59a2",
@@ -161,7 +164,7 @@ class DatasetteServer {
         if (/Uvicorn running/.test(data)) {
           if (backupPath) {
             await this.apiRequest("/-/restore-temporary-from-file", {
-              path: backupPath
+              path: backupPath,
             });
             await unlink(backupPath);
           }
@@ -603,13 +606,6 @@ function buildMenu() {
           },
         },
         {
-          label: "Open Recent CSV",
-          role: "recentdocuments",
-          submenu: [
-            { label: "Clear Recent Items", role: "clearrecentdocuments" },
-          ],
-        },
-        {
           label: "Open Database…",
           accelerator: "CommandOrControl+D",
           click: async () => {
@@ -634,6 +630,7 @@ function buildMenu() {
                   detail: responseJson.error,
                 });
               } else {
+                app.addRecentDocument(filepath);
                 pathToOpen = responseJson.path;
               }
             }
@@ -641,6 +638,13 @@ function buildMenu() {
               datasette.openPath(pathToOpen);
             }, 500);
           },
+        },
+        {
+          label: "Open Recent",
+          role: "recentdocuments",
+          submenu: [
+            { label: "Clear Recent Items", role: "clearrecentdocuments" },
+          ],
         },
         { type: "separator" },
         {
@@ -778,7 +782,7 @@ function buildMenu() {
           label: "Restart Server",
           async click() {
             await datasette.startOrRestart();
-          }
+          },
         },
         {
           label: "Stop Server and Copy Command",
@@ -816,6 +820,26 @@ app.on("window-all-closed", function () {
 });
 
 app.on("open-file", async (event, filepath) => {
+  const first16 = await firstBytes(filepath, 16);
+  if (first16.equals(SQLITE_HEADER)) {
+    const response = await datasette.apiRequest("/-/open-database-file", {
+      path: filepath,
+    });
+    const responseJson = await response.json();
+    if (!responseJson.ok) {
+      console.log(responseJson);
+      dialog.showMessageBox({
+        type: "error",
+        message: "Error opening database file",
+        detail: responseJson.error,
+      });
+    } else {
+      setTimeout(() => {
+        datasette.openPath(responseJson.path);
+      });
+    }
+    return;
+  }
   const response = await datasette.apiRequest("/-/open-csv-file", {
     path: filepath,
   });
@@ -834,3 +858,28 @@ app.on("open-file", async (event, filepath) => {
     datasette.openPath(pathToOpen);
   });
 });
+
+function firstBytes(filepath, bytesToRead) {
+  return new Promise((resolve, reject) => {
+    fs.open(filepath, "r", function (errOpen, fd) {
+      if (errOpen) {
+        reject(errOpen);
+      } else {
+        fs.read(
+          fd,
+          Buffer.alloc(bytesToRead),
+          0,
+          bytesToRead,
+          0,
+          function (errRead, bytesRead, buffer) {
+            if (errRead) {
+              reject(errRead);
+            } else {
+              resolve(buffer);
+            }
+          }
+        );
+      }
+    });
+  });
+}
