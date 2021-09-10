@@ -426,9 +426,7 @@ function windowOpts(extraOpts) {
 
 let datasette = null;
 
-async function initializeApp() {
-  /* We don't use openPath here because we want to control the transition from the
-     loading.html page to the index page once the server has started up */
+function createLoadingWindow() {
   let mainWindow = new BrowserWindow({
     show: false,
     ...windowOpts(),
@@ -445,6 +443,13 @@ async function initializeApp() {
     });
   });
   configureWindow(mainWindow);
+  return mainWindow;
+}
+
+async function initializeApp() {
+  /* We don't use openPath here because we want to control the transition from the
+     loading.html page to the index page once the server has started up */
+  createLoadingWindow();
   let freePort = null;
   try {
     freePort = await portfinder.getPortPromise({ port: 8001 });
@@ -906,6 +911,36 @@ function buildMenu() {
                 .serverArgs()
                 .join(" ")}`
             );
+          },
+        },
+        {
+          label: "Reinstall Datasette",
+          click() {
+            dialog
+              .showMessageBox({
+                type: "warning",
+                message: "Delete and reinstall Datasette?",
+                detail:
+                  "This will upgrade Datasette to the latest version, and remove all currently installed additional plugins.",
+                buttons: ["OK", "Cancel"],
+              })
+              .then(async (click) => {
+                if (click.response == 0) {
+                  // Clicked OK
+                  BrowserWindow.getAllWindows().forEach((window) =>
+                    window.close()
+                  );
+                  fs.rmdirSync(
+                    path.join(process.env.HOME, ".datasette-app", "venv"),
+                    { recursive: true }
+                  );
+                  createLoadingWindow();
+                  await datasette.startOrRestart();
+                  datasette.openPath("/", {
+                    forceMainWindow: true,
+                  });
+                }
+              });
           },
         },
       ],
