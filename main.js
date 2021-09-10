@@ -49,6 +49,9 @@ function configureWindow(window) {
       shell.openExternal(reqUrl);
     }
   });
+  window.webContents.on("did-fail-load", (event) => {
+    window.loadFile("did-fail-load.html");
+  });
   window.webContents.on("did-navigate", (event, reqUrl) => {
     // Update back/forward button enable status
     let menu = Menu.getApplicationMenu();
