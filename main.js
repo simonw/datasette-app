@@ -18,8 +18,6 @@ const prompt = require("electron-prompt");
 const fs = require("fs");
 const { unlink } = require("fs/promises");
 const util = require("util");
-
-const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
 
 const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
@@ -73,7 +71,8 @@ class DatasetteServer {
     this.process = null;
     this.apiToken = crypto.randomBytes(32).toString("hex");
     this.logEmitter = new EventEmitter();
-    this.cappedLog = [];
+    this.cappedServerLog = [];
+    this.cappedProcessLog = [];
     this.accessControl = "localhost";
     this.cap = 1000;
   }
@@ -100,7 +99,7 @@ class DatasetteServer {
     this.accessControl = accessControl;
     await this.startOrRestart();
   }
-  log(message, type) {
+  serverLog(message, type) {
     if (!message) {
       return;
     }
@@ -110,9 +109,14 @@ class DatasetteServer {
       type,
       ts: new Date(),
     };
-    this.cappedLog.push(item);
+    this.cappedServerLog.push(item);
     this.logEmitter.emit("serverLog", item);
-    this.cappedLog = this.cappedLog.slice(-this.cap);
+    this.cappedServerLog = this.cappedServerLog.slice(-this.cap);
+  }
+  processLog(item) {
+    this.cappedProcessLog.push(item);
+    this.logEmitter.emit("processLog", item);
+    this.cappedProcessLog = this.cappedProcessLog.slice(-this.cap);
   }
   serverArgs() {
     const args = [
@@ -176,12 +180,12 @@ class DatasetteServer {
           resolve(`http://localhost:${this.port}/`);
         }
         for (const line of data.toString().split("\n")) {
-          this.log(line, "stderr");
+          this.serverLog(line, "stderr");
         }
       });
       process.stdout.on("data", (data) => {
         for (const line of data.toString().split("\n")) {
-          this.log(line);
+          this.serverLog(line);
         }
       });
       process.on("error", (err) => {
@@ -206,6 +210,61 @@ class DatasetteServer {
     });
   }
 
+  async execCommand(command, args) {
+    return new Promise((resolve, reject) => {
+      // Use spawn() not execFile() so we can tail stdout/stderr
+      console.log(command, args);
+      // I tried process.hrtime() here but consistently got a
+      // "Cannot access 'process' before initialization" error
+      const start = new Date().valueOf(); // millisecond timestamp
+      const process = cp.spawn(command, args);
+      this.processLog({
+        type: "start",
+        command,
+        args,
+      });
+      process.stderr.on("data", async (data) => {
+        for (const line of data.toString().split("\n")) {
+          this.processLog({
+            type: "stderr",
+            command,
+            args,
+            stderr: line.trim(),
+          });
+        }
+      });
+      process.stdout.on("data", (data) => {
+        for (const line of data.toString().split("\n")) {
+          this.processLog({
+            type: "stdout",
+            command,
+            args,
+            stdout: line.trim(),
+          });
+        }
+      });
+      process.on("error", (err) => {
+        this.processLog({
+          type: "error",
+          command,
+          args,
+          error: err.toString(),
+        });
+        reject(err);
+      });
+      process.on("exit", (err) => {
+        let duration_ms = new Date().valueOf() - start;
+        this.processLog({
+          type: "end",
+          command,
+          args,
+          duration: duration_ms,
+        });
+        resolve(process);
+      });
+    });
+  }
+
   async installPlugin(plugin) {
     const pip_binary = path.join(
       process.env.HOME,
@@ -214,13 +273,13 @@ class DatasetteServer {
       "bin",
       "pip"
     );
-    await execFile(pip_binary, ["install", plugin]);
+    await this.execCommand(pip_binary, ["install", plugin]);
   }
 
   async packageVersions() {
     const venv_dir = await this.ensureVenv();
     const pip_path = path.join(venv_dir, "bin", "pip");
-    const versionsProcess = await execFile(pip_path, [
+    const versionsProcess = await this.execCommand(pip_path, [
       "list",
       "--format",
       "json",
@@ -243,16 +302,16 @@ class DatasetteServer {
       // Check Python interpreter still works, using
       // ~/.datasette-app/venv/bin/python3.9 --version
       // See https://github.com/simonw/datasette-app/issues/89
-      const venv_python = path.join(venv_dir, "python3.9");
+      const venv_python = path.join(venv_dir, "bin", "python3.9");
       try {
-        await execFile(venv_python, ["--version"]);
+        await this.execCommand(venv_python, ["--version"]);
+        shouldCreateVenv = false;
       } catch (e) {
-        shouldCreateVenv = true;
         fs.rmdirSync(venv_dir, { recursive: true });
       }
     }
     if (shouldCreateVenv) {
-      await execFile(findPython(), ["-m", "venv", venv_dir]);
+      await this.execCommand(findPython(), ["-m", "venv", venv_dir]);
     }
     return venv_dir;
   }
@@ -266,7 +325,7 @@ class DatasetteServer {
     }
     const pip_path = path.join(venv_dir, "bin", "pip");
     try {
-      await execFile(pip_path, ["install"].concat(needsInstall));
+      await this.execCommand(pip_path, ["install"].concat(needsInstall));
     } catch (e) {
       dialog.showMessageBox({
         type: "error",
@@ -364,6 +423,13 @@ async function initializeApp() {
   mainWindow.loadFile("loading.html");
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
+    for (const item of datasette.cappedProcessLog) {
+      mainWindow.webContents.send("processLog", item);
+    }
+    datasette.on("processLog", (item) => {
+      !mainWindow.isDestroyed() &&
+        mainWindow.webContents.send("processLog", item);
+    });
   });
   configureWindow(mainWindow);
   let freePort = null;
@@ -427,8 +493,7 @@ function buildMenu() {
     click() {
       let window = BrowserWindow.getFocusedWindow();
       if (window) {
-        const url = new URL("/", window.webContents.getURL());
-        window.webContents.loadURL(url.toString());
+        window.webContents.loadURL(`http://localhost:${datasette.port}/`);
       }
     },
   };
@@ -798,7 +863,7 @@ function buildMenu() {
                 !browserWindow.isDestroyed() &&
                   browserWindow.webContents.send("serverLog", item);
               });
-              for (const item of datasette.cappedLog) {
+              for (const item of datasette.cappedServerLog) {
                 browserWindow.webContents.send("serverLog", item);
               }
             }

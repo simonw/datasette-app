@@ -5,15 +5,29 @@ html {
   background-color: #276890;
 }
 body {
-  height: 90%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  text-align: center;
+}
+svg {
+  height: 20vh;
+}
+textarea {
+  height: 70vh;
+  width: 90%;
+  padding: 1em;
+  background-color: #276890;
+  color: white;
+  border: 1px solid black;
+  overflow: auto;
+  outline: none;
+  resize: none;
+  opacity: 0.6;
 }
 </style>
 </head>
 <body>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200px" height="200px" viewBox="0 0 100 100">
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="200px" height="200px" viewBox="0 0 100 100">
 <g transform="rotate(0 50 50)">
   <rect x="47" y="24" rx="3" ry="6" width="6" height="12" fill="#292664">
     <animate attributeName="opacity" values="1;0" keyTimes="0;1" dur="1s" begin="-0.9166666666666666s" repeatCount="indefinite"></animate>
@@ -64,5 +78,38 @@ body {
   </rect>
 </g>
 </svg>
+
+<div>
+  <textarea id="logs"></textarea>
+</div>
+
+<script>
+  const ta = document.getElementById("logs");
+  const log = [];
+  datasetteApp.onProcessLog((event, item) => {
+    let text = '';
+    switch (item.type) {
+      case 'start':
+        text = item.command + ' ' + item.args.join(' ');
+        break;
+      case 'stdout':
+        text = item.stdout;
+        break;
+      case 'stderr':
+        text = item.stderr;
+        break;
+      case 'error':
+        text = item.error;
+        break;
+      case 'end':
+        text = `Took ${item.duration}ms`;
+        break;
+    }
+    log.push(text.trim().replaceAll(datasetteApp.venvPath + '/', ''));
+    ta.value = log.join("\n");
+    ta.scrollTop = ta.scrollHeight
+  });
+</script>
+
 </body>
 </html>
