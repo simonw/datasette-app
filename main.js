@@ -903,14 +903,32 @@ function buildMenu() {
           },
         },
         {
-          label: "Stop Server and Copy Command",
+          label: "Run Server Manually",
           click() {
-            datasette.process.kill();
-            clipboard.writeText(
-              `DATASETTE_API_TOKEN=${datasette.apiToken} datasette ${datasette
-                .serverArgs()
-                .join(" ")}`
-            );
+            const command = `DATASETTE_API_TOKEN=${
+              datasette.apiToken
+            } ${path.join(
+              process.env.HOME,
+              ".datasette-app",
+              "venv",
+              "bin",
+              "datasette"
+            )} ${datasette.serverArgs().join(" ")}`;
+            dialog
+              .showMessageBox({
+                type: "warning",
+                message: "Run server manually?",
+                detail:
+                  "Clicking OK will terminate the Datasette server used by this app\n\n" +
+                  "Copy this command to a terminal to manually run a replacement:\n\n" +
+                  command,
+                buttons: ["OK", "Cancel"],
+              })
+              .then(async (click) => {
+                if (click.response == 0) {
+                  datasette.process.kill();
+                }
+              });
           },
         },
         {
