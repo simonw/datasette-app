@@ -111,7 +111,7 @@ class DatasetteServer {
       ts: new Date(),
     };
     this.cappedLog.push(item);
-    this.logEmitter.emit("log", item);
+    this.logEmitter.emit("serverLog", item);
     this.cappedLog = this.cappedLog.slice(-this.cap);
   }
   serverArgs() {
@@ -377,7 +377,7 @@ async function initializeApp() {
   if (!datasette) {
     datasette = new DatasetteServer(app, freePort);
   }
-  datasette.on("log", (item) => {
+  datasette.on("serverLog", (item) => {
     console.log(item);
   });
   await datasette.startOrRestart();
@@ -794,12 +794,12 @@ function buildMenu() {
                 })
               );
               browserWindow.loadFile("server-log.html");
-              datasette.on("log", (item) => {
+              datasette.on("serverLog", (item) => {
                 !browserWindow.isDestroyed() &&
-                  browserWindow.webContents.send("log", item);
+                  browserWindow.webContents.send("serverLog", item);
               });
               for (const item of datasette.cappedLog) {
-                browserWindow.webContents.send("log", item);
+                browserWindow.webContents.send("serverLog", item);
               }
             }
           },

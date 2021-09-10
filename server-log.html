@@ -9,7 +9,7 @@
     <pre id="logs"></pre>
     <script>
       const pre = document.getElementById("logs");
-      onLog((event, item) => {
+      onServerLog((event, item) => {
         const span = document.createElement("span");
         span.style.color = item.type == "stderr" ? "red" : "black";
         span.innerText = item.ts.toLocaleTimeString() + ": " + item.message + "\n";
