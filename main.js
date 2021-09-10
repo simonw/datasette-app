@@ -16,6 +16,7 @@ const cp = require("child_process");
 const portfinder = require("portfinder");
 const prompt = require("electron-prompt");
 const fs = require("fs");
+const { unlink } = require('fs/promises');
 const util = require("util");
 
 const execFile = util.promisify(cp.execFile);
@@ -25,7 +26,7 @@ const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
 
 const minPackageVersions = {
   datasette: "0.59a2",
-  "datasette-app-support": "0.6",
+  "datasette-app-support": "0.7",
   "datasette-vega": "0.6.2",
   "datasette-cluster-map": "0.17.1",
   "datasette-pretty-json": "0.2.1",
@@ -138,7 +139,14 @@ class DatasetteServer {
     const venv_dir = await this.ensureVenv();
     await this.ensurePackagesInstalled();
     const datasette_bin = path.join(venv_dir, "bin", "datasette");
+    let backupPath = null;
     if (this.process) {
+      // Dump temporary to restore later
+      backupPath = path.join(
+        app.getPath("temp"),
+        `backup-${crypto.randomBytes(8).toString("hex")}.db`
+      );
+      await this.apiRequest("/-/dump-temporary-to-file", { path: backupPath });
       this.process.kill();
     }
     return new Promise((resolve, reject) => {
@@ -149,8 +157,14 @@ class DatasetteServer {
         },
       });
       this.process = process;
-      process.stderr.on("data", (data) => {
+      process.stderr.on("data", async (data) => {
         if (/Uvicorn running/.test(data)) {
+          if (backupPath) {
+            await this.apiRequest("/-/restore-temporary-from-file", {
+              path: backupPath
+            });
+            await unlink(backupPath);
+          }
           resolve(`http://localhost:${this.port}/`);
         }
         for (const line of data.toString().split("\n")) {
@@ -751,6 +765,12 @@ function buildMenu() {
               }
             }
           },
+        },
+        {
+          label: "Restart Server",
+          async click() {
+            await datasette.startOrRestart();
+          }
         },
         {
           label: "Stop Server and Copy Command",
