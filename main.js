@@ -218,6 +218,7 @@ class DatasetteServer {
       // "Cannot access 'process' before initialization" error
       const start = new Date().valueOf(); // millisecond timestamp
       const process = cp.spawn(command, args);
+      const collectedErr = [];
       this.processLog({
         type: "start",
         command,
@@ -231,6 +232,7 @@ class DatasetteServer {
             args,
             stderr: line.trim(),
           });
+          collectedErr.push(line.trim());
         }
       });
       process.stdout.on("data", (data) => {
@@ -260,7 +262,11 @@ class DatasetteServer {
           args,
           duration: duration_ms,
         });
-        resolve(process);
+        if (process.exitCode == 0) {
+          resolve(process);
+        } else {
+          reject(collectedErr.join("\n"));
+        }
       });
     });
   }
@@ -273,7 +279,11 @@ class DatasetteServer {
       "bin",
       "pip"
     );
-    await this.execCommand(pip_binary, ["install", plugin]);
+    await this.execCommand(pip_binary, [
+      "install",
+      plugin,
+      "--disable-pip-version-check",
+    ]);
   }
 
   async packageVersions() {
@@ -325,7 +335,10 @@ class DatasetteServer {
     }
     const pip_path = path.join(venv_dir, "bin", "pip");
     try {
-      await this.execCommand(pip_path, ["install"].concat(needsInstall));
+      await this.execCommand(
+        pip_path,
+        ["install"].concat(needsInstall).concat(["--disable-pip-version-check"])
+      );
     } catch (e) {
       dialog.showMessageBox({
         type: "error",
@@ -782,12 +795,21 @@ function buildMenu() {
             })
               .then(async (pluginName) => {
                 if (pluginName !== null) {
-                  await datasette.installPlugin(pluginName);
-                  await datasette.startOrRestart();
-                  dialog.showMessageBoxSync({
-                    type: "info",
-                    message: "Plugin installed",
-                  });
+                  try {
+                    await datasette.installPlugin(pluginName);
+                    await datasette.startOrRestart();
+                    dialog.showMessageBoxSync({
+                      type: "info",
+                      message: "Plugin installed",
+                      detail: `${pluginName} is now ready to use`,
+                    });
+                  } catch (error) {
+                    dialog.showMessageBoxSync({
+                      type: "error",
+                      message: "Plugin installation error",
+                      detail: error.toString(),
+                    });
+                  }
                 }
               })
               .catch(console.error);
