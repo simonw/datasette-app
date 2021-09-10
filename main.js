@@ -18,6 +18,8 @@ const prompt = require("electron-prompt");
 const fs = require("fs");
 const { unlink } = require("fs/promises");
 const util = require("util");
+
+const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
 
 const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
@@ -289,7 +291,7 @@ class DatasetteServer {
   async packageVersions() {
     const venv_dir = await this.ensureVenv();
     const pip_path = path.join(venv_dir, "bin", "pip");
-    const versionsProcess = await this.execCommand(pip_path, [
+    const versionsProcess = await execFile(pip_path, [
       "list",
       "--format",
       "json",
@@ -848,26 +850,12 @@ function buildMenu() {
       label: "Debug",
       submenu: [
         {
-          label: "Open DevTools",
+          label: "Open Chromium DevTools",
           click() {
             BrowserWindow.getFocusedWindow().webContents.openDevTools();
           },
         },
-        {
-          label: "Package Versions",
-          async click() {
-            dialog.showMessageBox({
-              type: "info",
-              message: "Package Versions",
-              detail: JSON.stringify(
-                await datasette.packageVersions(),
-                null,
-                2
-              ),
-            });
-          },
-        },
-
+        { type: "separator" },
         {
           label: "Show Server Log",
           click() {
@@ -929,6 +917,21 @@ function buildMenu() {
                   datasette.process.kill();
                 }
               });
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Show Package Versions",
+          async click() {
+            dialog.showMessageBox({
+              type: "info",
+              message: "Package Versions",
+              detail: JSON.stringify(
+                await datasette.packageVersions(),
+                null,
+                2
+              ),
+            });
           },
         },
         {
