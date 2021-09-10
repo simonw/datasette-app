@@ -545,32 +545,11 @@ function buildMenu() {
         },
         { type: "separator" },
         {
-          label: "New Empty Database…",
-          accelerator: "CommandOrControl+Shift+N",
-          click: async () => {
-            const filepath = dialog.showSaveDialogSync({
-              defaultPath: "database.db",
-              title: "Create Empty Database",
-            });
-            if (!filepath) {
-              return;
-            }
-            const response = await datasette.apiRequest(
-              "/-/new-empty-database-file",
-              { path: filepath }
-            );
-            const responseJson = await response.json();
-            if (!responseJson.ok) {
-              console.log(responseJson);
-              dialog.showMessageBox({
-                type: "error",
-                title: "Datasette",
-                message: responseJson.error,
-              });
-            } else {
-              datasette.openPath(responseJson.path);
-            }
-          },
+          label: "Open Recent",
+          role: "recentdocuments",
+          submenu: [
+            { label: "Clear Recent Items", role: "clearrecentdocuments" },
+          ],
         },
         {
           label: "Open CSV…",
@@ -640,11 +619,32 @@ function buildMenu() {
           },
         },
         {
-          label: "Open Recent",
-          role: "recentdocuments",
-          submenu: [
-            { label: "Clear Recent Items", role: "clearrecentdocuments" },
-          ],
+          label: "New Empty Database…",
+          accelerator: "CommandOrControl+Shift+N",
+          click: async () => {
+            const filepath = dialog.showSaveDialogSync({
+              defaultPath: "database.db",
+              title: "Create Empty Database",
+            });
+            if (!filepath) {
+              return;
+            }
+            const response = await datasette.apiRequest(
+              "/-/new-empty-database-file",
+              { path: filepath }
+            );
+            const responseJson = await response.json();
+            if (!responseJson.ok) {
+              console.log(responseJson);
+              dialog.showMessageBox({
+                type: "error",
+                title: "Datasette",
+                message: responseJson.error,
+              });
+            } else {
+              datasette.openPath(responseJson.path);
+            }
+          },
         },
         { type: "separator" },
         {
@@ -821,26 +821,16 @@ app.on("window-all-closed", function () {
 
 app.on("open-file", async (event, filepath) => {
   const first16 = await firstBytes(filepath, 16);
+  let endpoint;
+  let errorMessage;
   if (first16.equals(SQLITE_HEADER)) {
-    const response = await datasette.apiRequest("/-/open-database-file", {
-      path: filepath,
-    });
-    const responseJson = await response.json();
-    if (!responseJson.ok) {
-      console.log(responseJson);
-      dialog.showMessageBox({
-        type: "error",
-        message: "Error opening database file",
-        detail: responseJson.error,
-      });
-    } else {
-      setTimeout(() => {
-        datasette.openPath(responseJson.path);
-      });
-    }
-    return;
+    endpoint = "/-/open-database-file";
+    errorMessage = "Error opening database file";
+  } else {
+    endpoint = "/-/open-csv-file";
+    errorMessage = "Error opening CSV file";
   }
-  const response = await datasette.apiRequest("/-/open-csv-file", {
+  const response = await datasette.apiRequest(endpoint, {
     path: filepath,
   });
   const responseJson = await response.json();
@@ -848,15 +838,14 @@ app.on("open-file", async (event, filepath) => {
     console.log(responseJson);
     dialog.showMessageBox({
       type: "error",
-      message: "Error opening CSV file",
+      message: errorMessage,
       detail: responseJson.error,
     });
   } else {
-    pathToOpen = responseJson.path;
+    setTimeout(() => {
+      datasette.openPath(responseJson.path);
+    });
   }
-  setTimeout(() => {
-    datasette.openPath(pathToOpen);
-  });
 });
 
 function firstBytes(filepath, bytesToRead) {
