@@ -105,7 +105,13 @@ textarea {
         text = `Took ${item.duration}ms`;
         break;
     }
-    log.push(text.trim().replaceAll(datasetteApp.venvPath + '/', ''));
+    if (
+      // https://github.com/simonw/datasette-app/issues/70#issuecomment-917193822
+      !/WARNING.*using pip version.*/.test(text) &&
+      !/.*You should consider upgrading.*pip.*/.test(text)
+    ) {
+      log.push(text.trim().replaceAll(datasetteApp.venvPath + '/', ''));
+    }
     ta.value = log.join("\n");
     ta.scrollTop = ta.scrollHeight
   });
