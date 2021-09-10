@@ -153,12 +153,17 @@ class DatasetteServer {
       this.process.kill();
     }
     return new Promise((resolve, reject) => {
-      const process = cp.spawn(datasette_bin, this.serverArgs(), {
-        env: {
-          DATASETTE_API_TOKEN: this.apiToken,
-          DATASETTE_SECRET: RANDOM_SECRET,
-        },
-      });
+      let process;
+      try {
+        process = cp.spawn(datasette_bin, this.serverArgs(), {
+          env: {
+            DATASETTE_API_TOKEN: this.apiToken,
+            DATASETTE_SECRET: RANDOM_SECRET,
+          },
+        });
+      } catch (e) {
+        reject(e);
+      }
       this.process = process;
       process.stderr.on("data", async (data) => {
         if (/Uvicorn running/.test(data)) {
@@ -179,7 +184,7 @@ class DatasetteServer {
           this.log(line);
         }
       });
-      this.process.on("error", (err) => {
+      process.on("error", (err) => {
         console.error("Failed to start datasette", err);
         this.app.quit();
         reject();
@@ -233,7 +238,20 @@ class DatasetteServer {
     if (!fs.existsSync(datasette_app_dir)) {
       await mkdir(datasette_app_dir);
     }
-    if (!fs.existsSync(venv_dir)) {
+    let shouldCreateVenv = true;
+    if (fs.existsSync(venv_dir)) {
+      // Check Python interpreter still works, using
+      // ~/.datasette-app/venv/bin/python3.9 --version
+      // See https://github.com/simonw/datasette-app/issues/89
+      const venv_python = path.join(venv_dir, "python3.9");
+      try {
+        await execFile(venv_python, ["--version"]);
+      } catch (e) {
+        shouldCreateVenv = true;
+        fs.rmdirSync(venv_dir, { recursive: true });
+      }
+    }
+    if (shouldCreateVenv) {
       await execFile(findPython(), ["-m", "venv", venv_dir]);
     }
     return venv_dir;
@@ -247,7 +265,15 @@ class DatasetteServer {
       needsInstall.push(`${name}>=${requiredVersion}`);
     }
     const pip_path = path.join(venv_dir, "bin", "pip");
-    await execFile(pip_path, ["install"].concat(needsInstall));
+    try {
+      await execFile(pip_path, ["install"].concat(needsInstall));
+    } catch (e) {
+      dialog.showMessageBox({
+        type: "error",
+        message: "Error running pip",
+        detail: e.toString(),
+      });
+    }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
