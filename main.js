@@ -147,6 +147,13 @@ class DatasetteServer {
     }
     return args;
   }
+  serverEnv() {
+    return {
+      DATASETTE_API_TOKEN: this.apiToken,
+      DATASETTE_SECRET: RANDOM_SECRET,
+      DATASETTE_DEFAULT_PLUGINS: Object.keys(minPackageVersions).join(" "),
+    };
+  }
   async startOrRestart() {
     const venv_dir = await this.ensureVenv();
     await this.ensurePackagesInstalled();
@@ -165,10 +172,7 @@ class DatasetteServer {
       let process;
       try {
         process = cp.spawn(datasette_bin, this.serverArgs(), {
-          env: {
-            DATASETTE_API_TOKEN: this.apiToken,
-            DATASETTE_SECRET: RANDOM_SECRET,
-          },
+          env: this.serverEnv(),
         });
       } catch (e) {
         reject(e);
@@ -288,6 +292,22 @@ class DatasetteServer {
       "install",
       plugin,
       "--disable-pip-version-check",
+    ]);
+  }
+
+  async uninstallPlugin(plugin) {
+    const pip_binary = path.join(
+      process.env.HOME,
+      ".datasette-app",
+      "venv",
+      "bin",
+      "pip"
+    );
+    await this.execCommand(pip_binary, [
+      "uninstall",
+      plugin,
+      "--disable-pip-version-check",
+      "-y",
     ]);
   }
 
@@ -491,6 +511,25 @@ async function initializeApp() {
       dialog.showMessageBoxSync({
         type: "error",
         message: "Plugin installation error",
+        detail: error.toString(),
+      });
+    }
+  });
+
+  ipcMain.on("uninstall-plugin", async (event, pluginName) => {
+    try {
+      await datasette.uninstallPlugin(pluginName);
+      await datasette.startOrRestart();
+      dialog.showMessageBoxSync({
+        type: "info",
+        message: "Plugin uninstalled",
+        detail: `${pluginName} has been removed`,
+      });
+      event.reply("plugin-uninstalled", pluginName);
+    } catch (error) {
+      dialog.showMessageBoxSync({
+        type: "error",
+        message: "Error uninstalling plugin",
         detail: error.toString(),
       });
     }
@@ -891,15 +930,20 @@ function buildMenu() {
         {
           label: "Run Server Manually",
           click() {
-            const command = `DATASETTE_API_TOKEN=${
-              datasette.apiToken
-            } ${path.join(
-              process.env.HOME,
-              ".datasette-app",
-              "venv",
-              "bin",
-              "datasette"
-            )} ${datasette.serverArgs().join(" ")}`;
+            let command = [];
+            for (const [key, value] of Object.entries(datasette.serverEnv())) {
+              command.push(`${key}="${value}"`);
+            }
+            command.push(
+              path.join(
+                process.env.HOME,
+                ".datasette-app",
+                "venv",
+                "bin",
+                "datasette"
+              )
+            );
+            command.push(datasette.serverArgs().join(" "));
             dialog
               .showMessageBox({
                 type: "warning",
@@ -907,7 +951,7 @@ function buildMenu() {
                 detail:
                   "Clicking OK will terminate the Datasette server used by this app\n\n" +
                   "Copy this command to a terminal to manually run a replacement:\n\n" +
-                  command,
+                  command.join(" "),
                 buttons: ["OK", "Cancel"],
               })
               .then(async (click) => {

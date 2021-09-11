@@ -12,6 +12,14 @@ contextBridge.exposeInMainWorld("datasetteApp", {
       link.innerHTML = `Installing ${plugin}…`;
     }
   },
+  uninstallPlugin: (plugin, link) => {
+    ipcRenderer.send("uninstall-plugin", plugin);
+    if (link) {
+      link.style.opacity = 0.5;
+      link.setAttribute("href", "#");
+      link.innerHTML = `Uninstalling ${plugin}…`;
+    }
+  },
   onServerLog: (callback) => {
     ipcRenderer.on("serverLog", callback);
   },
@@ -24,5 +32,8 @@ ipcRenderer.on("csv-imported", () => {
   location.reload();
 });
 ipcRenderer.on("plugin-installed", () => {
+  location.reload();
+});
+ipcRenderer.on("plugin-uninstalled", () => {
   location.reload();
 });
