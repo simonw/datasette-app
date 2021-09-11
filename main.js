@@ -29,7 +29,7 @@ const SQLITE_HEADER = Buffer.from("53514c69746520666f726d6174203300", "hex");
 
 const minPackageVersions = {
   datasette: "0.59a2",
-  "datasette-app-support": "0.8",
+  "datasette-app-support": "0.9",
   "datasette-vega": "0.6.2",
   "datasette-cluster-map": "0.17.1",
   "datasette-pretty-json": "0.2.1",
