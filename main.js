@@ -29,7 +29,7 @@ const SQLITE_HEADER = Buffer.from("53514c69746520666f726d6174203300", "hex");
 
 const minPackageVersions = {
   datasette: "0.59a2",
-  "datasette-app-support": "0.7",
+  "datasette-app-support": "0.8",
   "datasette-vega": "0.6.2",
   "datasette-cluster-map": "0.17.1",
   "datasette-pretty-json": "0.2.1",
@@ -477,6 +477,25 @@ async function initializeApp() {
     datasette.shutdown();
   });
 
+  ipcMain.on("install-plugin", async (event, pluginName) => {
+    try {
+      await datasette.installPlugin(pluginName);
+      await datasette.startOrRestart();
+      dialog.showMessageBoxSync({
+        type: "info",
+        message: "Plugin installed",
+        detail: `${pluginName} is now ready to use`,
+      });
+      event.reply("plugin-installed", pluginName);
+    } catch (error) {
+      dialog.showMessageBoxSync({
+        type: "error",
+        message: "Plugin installation error",
+        detail: error.toString(),
+      });
+    }
+  });
+
   ipcMain.on("import-csv", async (event, database) => {
     let selectedFiles = dialog.showOpenDialogSync({
       properties: ["openFile"],
@@ -794,35 +813,11 @@ function buildMenu() {
       label: "Plugins",
       submenu: [
         {
-          label: "Install Plugin…",
+          label: "Install Plugins…",
           click() {
-            prompt({
-              title: "Install Plugin",
-              label: "Plugin name:",
-              value: "datasette-vega",
-              type: "input",
-              alwaysOnTop: true,
-            })
-              .then(async (pluginName) => {
-                if (pluginName !== null) {
-                  try {
-                    await datasette.installPlugin(pluginName);
-                    await datasette.startOrRestart();
-                    dialog.showMessageBoxSync({
-                      type: "info",
-                      message: "Plugin installed",
-                      detail: `${pluginName} is now ready to use`,
-                    });
-                  } catch (error) {
-                    dialog.showMessageBoxSync({
-                      type: "error",
-                      message: "Plugin installation error",
-                      detail: error.toString(),
-                    });
-                  }
-                }
-              })
-              .catch(console.error);
+            datasette.openPath(
+              "/plugin_directory/plugins?_sort_desc=stargazers_count&_facet=installed"
+            );
           },
         },
         {
