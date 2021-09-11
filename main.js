@@ -816,7 +816,7 @@ function buildMenu() {
           label: "Install Plugins…",
           click() {
             datasette.openPath(
-              "/plugin_directory/plugins?_sort_desc=stargazers_count&_facet=installed"
+              "/plugin_directory/plugins?_sort_desc=stargazers_count&_facet=installed&_facet=upgrade"
             );
           },
         },
