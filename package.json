@@ -18,13 +18,15 @@
         "CFBundleDocumentTypes": [
           {
             "CFBundleTypeExtensions": [
-              "csv", "tsv", "db"
+              "csv",
+              "tsv",
+              "db"
             ],
             "LSHandlerRank": "Alternate"
           }
         ]
       },
-      "hardenedRuntime" : true,
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
@@ -61,6 +63,7 @@
   "dependencies": {
     "electron-prompt": "^1.6.2",
     "electron-request": "^1.7.1",
-    "portfinder": "^1.0.28"
+    "portfinder": "^1.0.28",
+    "update-electron-app": "^2.0.1"
   }
 }

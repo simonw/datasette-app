@@ -21,6 +21,10 @@ const util = require("util");
 const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
 
+require("update-electron-app")({
+  updateInterval: "1 hour",
+});
+
 const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
 
 // 'SQLite format 3\0':
