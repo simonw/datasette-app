@@ -14,6 +14,7 @@ const path = require("path");
 const os = require("os");
 const cp = require("child_process");
 const portfinder = require("portfinder");
+const prompt = require("electron-prompt");
 const fs = require("fs");
 const { unlink } = require("fs/promises");
 const util = require("util");
@@ -32,7 +33,7 @@ const SQLITE_HEADER = Buffer.from("53514c69746520666f726d6174203300", "hex");
 
 const minPackageVersions = {
   datasette: "0.59a2",
-  "datasette-app-support": "0.9",
+  "datasette-app-support": "0.10",
   "datasette-vega": "0.6.2",
   "datasette-cluster-map": "0.17.1",
   "datasette-pretty-json": "0.2.1",
@@ -759,6 +760,7 @@ function buildMenu() {
             { label: "Clear Recent Items", role: "clearrecentdocuments" },
           ],
         },
+        { type: "separator" },
         {
           label: "Open CSV…",
           accelerator: "CommandOrControl+O",
@@ -792,6 +794,42 @@ function buildMenu() {
             }, 500);
           },
         },
+        {
+          label: "Open CSV from URL…",
+          click: async () => {
+            prompt({
+              title: "Open CSV from URL",
+              label: "URL:",
+              type: "input",
+              alwaysOnTop: true,
+            })
+              .then(async (url) => {
+                if (url !== null) {
+                  const response = await datasette.apiRequest(
+                    "/-/open-csv-from-url",
+                    {
+                      url: url,
+                    }
+                  );
+                  const responseJson = await response.json();
+                  if (!responseJson.ok) {
+                    console.log(responseJson);
+                    dialog.showMessageBox({
+                      type: "error",
+                      message: "Error loading CSV file",
+                      detail: responseJson.error,
+                    });
+                  } else {
+                    setTimeout(() => {
+                      datasette.openPath(responseJson.path);
+                    }, 500);
+                  }
+                }
+              })
+              .catch(console.error);
+          },
+        },
+        { type: "separator" },
         {
           label: "Open Database…",
           accelerator: "CommandOrControl+D",
