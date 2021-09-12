@@ -4,6 +4,14 @@ contextBridge.exposeInMainWorld("datasetteApp", {
   importCsv: (database) => {
     ipcRenderer.send("import-csv", database);
   },
+  importCsvFromUrl: (url, link) => {
+    var tableName = link ? link.dataset.tablename : "";
+    ipcRenderer.send("import-csv-from-url", { url, tableName });
+    if (link) {
+      link.style.opacity = 0.5;
+      link.innerHTML = `Importing ${link.dataset.name}…`;
+    }
+  },
   installPlugin: (plugin, link) => {
     ipcRenderer.send("install-plugin", plugin);
     if (link) {
@@ -26,7 +34,7 @@ contextBridge.exposeInMainWorld("datasetteApp", {
   onProcessLog: (callback) => {
     ipcRenderer.on("processLog", callback);
   },
-  venvPath: path.join(process.env.HOME, ".datasette-app", "venv")
+  venvPath: path.join(process.env.HOME, ".datasette-app", "venv"),
 });
 ipcRenderer.on("csv-imported", () => {
   location.reload();

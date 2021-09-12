@@ -504,6 +504,26 @@ function createLoadingWindow() {
   return mainWindow;
 }
 
+async function importCsvFromUrl(url, tableName) {
+  const response = await datasette.apiRequest("/-/open-csv-from-url", {
+    url: url,
+    table_name: tableName,
+  });
+  const responseJson = await response.json();
+  if (!responseJson.ok) {
+    console.log(responseJson);
+    dialog.showMessageBox({
+      type: "error",
+      message: "Error loading CSV file",
+      detail: responseJson.error,
+    });
+  } else {
+    setTimeout(() => {
+      datasette.openPath(responseJson.path);
+    }, 500);
+  }
+}
+
 async function initializeApp() {
   /* We don't use openPath here because we want to control the transition from the
      loading.html page to the index page once the server has started up */
@@ -570,6 +590,10 @@ async function initializeApp() {
         detail: error.toString(),
       });
     }
+  });
+
+  ipcMain.on("import-csv-from-url", async (event, info) => {
+    await importCsvFromUrl(info.url, info.tableName);
   });
 
   ipcMain.on("import-csv", async (event, database) => {
@@ -805,25 +829,7 @@ function buildMenu() {
             })
               .then(async (url) => {
                 if (url !== null) {
-                  const response = await datasette.apiRequest(
-                    "/-/open-csv-from-url",
-                    {
-                      url: url,
-                    }
-                  );
-                  const responseJson = await response.json();
-                  if (!responseJson.ok) {
-                    console.log(responseJson);
-                    dialog.showMessageBox({
-                      type: "error",
-                      message: "Error loading CSV file",
-                      detail: responseJson.error,
-                    });
-                  } else {
-                    setTimeout(() => {
-                      datasette.openPath(responseJson.path);
-                    }, 500);
-                  }
+                  await importCsvFromUrl(url);
                 }
               })
               .catch(console.error);
@@ -987,10 +993,10 @@ function buildMenu() {
           click() {
             let newWindow = new BrowserWindow({
               width: 600,
-              height: 200
+              height: 200,
             });
             newWindow.loadFile("progress.html");
-          }
+          },
         },
         { type: "separator" },
         {
