@@ -105,9 +105,12 @@ textarea {
         text = `Took ${item.duration}ms`;
         break;
     }
-    log.push(text.trim().replaceAll(datasetteApp.venvPath + '/', ''));
-    ta.value = log.join("\n");
-    ta.scrollTop = ta.scrollHeight
+    let line = text.trim().replaceAll(datasetteApp.venvPath + '/', '');
+    if (line) {
+      log.push(line);
+      ta.value = log.join("\n");
+      ta.scrollTop = ta.scrollHeight;
+    }
   });
 </script>
 
