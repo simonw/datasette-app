@@ -14,7 +14,6 @@ const path = require("path");
 const os = require("os");
 const cp = require("child_process");
 const portfinder = require("portfinder");
-const prompt = require("electron-prompt");
 const fs = require("fs");
 const { unlink } = require("fs/promises");
 const util = require("util");
@@ -80,9 +79,38 @@ class DatasetteServer {
     this.cappedProcessLog = [];
     this.accessControl = "localhost";
     this.cap = 1000;
+    this.hasStarted = false;
   }
   on(event, listener) {
     this.logEmitter.on(event, listener);
+  }
+  async openFile(filepath) {
+    const first16 = await firstBytes(filepath, 16);
+    let endpoint;
+    let errorMessage;
+    if (first16.equals(SQLITE_HEADER)) {
+      endpoint = "/-/open-database-file";
+      errorMessage = "Error opening database file";
+    } else {
+      endpoint = "/-/open-csv-file";
+      errorMessage = "Error opening CSV file";
+    }
+    const response = await this.apiRequest(endpoint, {
+      path: filepath,
+    });
+    const responseJson = await response.json();
+    if (!responseJson.ok) {
+      console.log(responseJson);
+      dialog.showMessageBox({
+        type: "error",
+        message: errorMessage,
+        detail: responseJson.error,
+      });
+    } else {
+      setTimeout(() => {
+        this.openPath(responseJson.path);
+      });
+    }
   }
   async about() {
     const response = await request(
@@ -180,6 +208,7 @@ class DatasetteServer {
       this.process = process;
       process.stderr.on("data", async (data) => {
         if (/Uvicorn running/.test(data)) {
+          this.hasStarted = true;
           if (backupPath) {
             await this.apiRequest("/-/restore-temporary-from-file", {
               path: backupPath,
@@ -490,9 +519,14 @@ async function initializeApp() {
     console.log(item);
   });
   await datasette.startOrRestart();
-  datasette.openPath("/", {
-    forceMainWindow: true,
-  });
+  if (filepathOnOpen) {
+    await datasette.openFile(filepathOnOpen);
+    filepathOnOpen = null;
+  } else {
+    datasette.openPath("/", {
+      forceMainWindow: true,
+    });
+  }
   app.on("will-quit", () => {
     datasette.shutdown();
   });
@@ -1030,32 +1064,13 @@ app.on("window-all-closed", function () {
   if (process.platform !== "darwin") app.quit();
 });
 
+let filepathOnOpen = null;
+
 app.on("open-file", async (event, filepath) => {
-  const first16 = await firstBytes(filepath, 16);
-  let endpoint;
-  let errorMessage;
-  if (first16.equals(SQLITE_HEADER)) {
-    endpoint = "/-/open-database-file";
-    errorMessage = "Error opening database file";
+  if (datasette.hasStarted) {
+    await datasette.openFile(filepath);
   } else {
-    endpoint = "/-/open-csv-file";
-    errorMessage = "Error opening CSV file";
-  }
-  const response = await datasette.apiRequest(endpoint, {
-    path: filepath,
-  });
-  const responseJson = await response.json();
-  if (!responseJson.ok) {
-    console.log(responseJson);
-    dialog.showMessageBox({
-      type: "error",
-      message: errorMessage,
-      detail: responseJson.error,
-    });
-  } else {
-    setTimeout(() => {
-      datasette.openPath(responseJson.path);
-    });
+    filepathOnOpen = filepath;
   }
 });
 
