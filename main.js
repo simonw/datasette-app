@@ -943,6 +943,18 @@ function buildMenu() {
             }
           },
         },
+        { type: "separator" },
+        {
+          label: "Progress Bar Demo",
+          click() {
+            let newWindow = new BrowserWindow({
+              width: 600,
+              height: 200
+            });
+            newWindow.loadFile("progress.html");
+          }
+        },
+        { type: "separator" },
         {
           label: "Restart Server",
           async click() {
