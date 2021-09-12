@@ -886,7 +886,7 @@ function buildMenu() {
       label: "Plugins",
       submenu: [
         {
-          label: "Install Plugins…",
+          label: "Install and Manage Plugins…",
           click() {
             datasette.openPath(
               "/plugin_directory/plugins?_sort_desc=stargazers_count&_facet=installed&_facet=upgrade"
@@ -894,21 +894,7 @@ function buildMenu() {
           },
         },
         {
-          label: "List Installed Plugins",
-          click() {
-            let newWindow = new BrowserWindow({
-              ...windowOpts(),
-              ...{ show: false },
-            });
-            newWindow.loadURL(`http://localhost:${datasette.port}/-/plugins`);
-            newWindow.once("ready-to-show", () => {
-              newWindow.show();
-            });
-            configureWindow(newWindow);
-          },
-        },
-        {
-          label: "Plugins Directory",
+          label: "About Datasette Plugins",
           click() {
             shell.openExternal("https://datasette.io/plugins");
           },
