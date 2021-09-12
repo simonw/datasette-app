@@ -79,7 +79,6 @@ class DatasetteServer {
     this.cappedProcessLog = [];
     this.accessControl = "localhost";
     this.cap = 1000;
-    this.hasStarted = false;
   }
   on(event, listener) {
     this.logEmitter.on(event, listener);
@@ -208,7 +207,7 @@ class DatasetteServer {
       this.process = process;
       process.stderr.on("data", async (data) => {
         if (/Uvicorn running/.test(data)) {
-          this.hasStarted = true;
+          serverHasStarted = true;
           if (backupPath) {
             await this.apiRequest("/-/restore-temporary-from-file", {
               path: backupPath,
@@ -519,13 +518,12 @@ async function initializeApp() {
     console.log(item);
   });
   await datasette.startOrRestart();
+  datasette.openPath("/", {
+    forceMainWindow: true,
+  });
   if (filepathOnOpen) {
     await datasette.openFile(filepathOnOpen);
     filepathOnOpen = null;
-  } else {
-    datasette.openPath("/", {
-      forceMainWindow: true,
-    });
   }
   app.on("will-quit", () => {
     datasette.shutdown();
@@ -1050,10 +1048,11 @@ app.on("window-all-closed", function () {
   if (process.platform !== "darwin") app.quit();
 });
 
+let serverHasStarted = false;
 let filepathOnOpen = null;
 
 app.on("open-file", async (event, filepath) => {
-  if (datasette.hasStarted) {
+  if (serverHasStarted) {
     await datasette.openFile(filepath);
   } else {
     filepathOnOpen = filepath;
