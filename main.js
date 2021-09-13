@@ -39,6 +39,7 @@ const minPackageVersions = {
   "datasette-pretty-json": "0.2.1",
   "datasette-edit-schema": "0.4",
   "datasette-configure-fts": "1.1",
+  "datasette-leaflet": "0.2.2",
 };
 
 let enableDebugMenu = !!process.env.DEBUGMENU;
