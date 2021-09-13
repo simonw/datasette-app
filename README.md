@@ -47,3 +47,17 @@ The Electron tests may leave a `datasette` process running. You can find the pro
 Then use `kill PROCESS_ID` to terminate it.
 
 ![datasette-app](https://user-images.githubusercontent.com/9599/131289203-18186b26-49a4-46e9-8925-b9e4745f3252.png)
+
+## How to develop plugins
+
+You can develop new Datasette plugins directly against your installation of Datasette Desktop. The [Writing Plugins](https://docs.datasette.io/en/stable/writing_plugins.html) documentation mostly applies as-is, but the one extra thing you will need to do is to install an editable version of your plugin directly into the virtual environment used by Datasette Desktop.
+
+To do this, first create a new plugin in a folder called `datasette-your-new-plugin` with a `setup.py`, as described in the plugin documentation. The easiest way to do that is using the [datasette-plugin cookiecutter template](https://github.com/simonw/datasette-plugin).
+
+Then `cd` into that directory and run the following:
+
+    ~/.datasette-app/venv/bin/pip install -e .
+
+This will install the plugin into your Datasette Desktop environment, such that any edits you make to the files in that directory will be picked up the next time the embedded Datasette server is restarted.
+
+You can restart the server either by quitting and restarting the Datasette Desktop application, or by enabling the Debug menu ("Datasette -> About Datasette -> Enable Debug Menu") and then using "Debug -> Restart Server".
