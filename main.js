@@ -423,7 +423,7 @@ class DatasetteServer {
     if (
       BrowserWindow.getAllWindows().length == 1 &&
       (opts.forceMainWindow ||
-        new URL(BrowserWindow.getFocusedWindow().webContents.getURL())
+        new URL(BrowserWindow.getAllWindows()[0].webContents.getURL())
           .pathname == "/")
     ) {
       // Re-use the single existing window
