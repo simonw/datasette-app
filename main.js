@@ -949,16 +949,16 @@ function buildMenu() {
       ],
     },
     {
-      role: 'help',
+      role: "help",
       submenu: [
         {
-          label: 'Learn More',
+          label: "Learn More",
           click: async () => {
-            await shell.openExternal('https://datasette.io/')
-          }
-        }
-      ]
-    }
+            await shell.openExternal("https://datasette.io/");
+          },
+        },
+      ],
+    },
   ];
   if (enableDebugMenu) {
     const enableChromiumDevTools = !!BrowserWindow.getAllWindows().length;
@@ -969,7 +969,10 @@ function buildMenu() {
           label: "Open Chromium DevTools",
           enabled: enableChromiumDevTools,
           click() {
-            (BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]).webContents.openDevTools();
+            (
+              BrowserWindow.getFocusedWindow() ||
+              BrowserWindow.getAllWindows()[0]
+            ).webContents.openDevTools();
           },
         },
         { type: "separator" },
