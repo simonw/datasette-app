@@ -21,7 +21,7 @@ The first time you launch the app it will install the latest version of Datasett
 
 The app consists of two parts: the Electron app, and a custom Datasette plugin called [datasette-app-support](https://github.com/simonw/datasette-app-support).
 
-It is not yet packaged with an installer. You can preview the app like so:
+You can install a development version of the app like so:
 
     # Clone the repo
     git clone https://github.com/simonw/datasette-app
