@@ -947,15 +947,28 @@ function buildMenu() {
         },
       ],
     },
+    {
+      role: 'help',
+      submenu: [
+        {
+          label: 'Learn More',
+          click: async () => {
+            await shell.openExternal('https://datasette.io/')
+          }
+        }
+      ]
+    }
   ];
   if (enableDebugMenu) {
+    const enableChromiumDevTools = !!BrowserWindow.getAllWindows().length;
     menuTemplate.push({
       label: "Debug",
       submenu: [
         {
           label: "Open Chromium DevTools",
+          enabled: enableChromiumDevTools,
           click() {
-            BrowserWindow.getFocusedWindow().webContents.openDevTools();
+            (BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]).webContents.openDevTools();
           },
         },
         { type: "separator" },
@@ -1105,7 +1118,23 @@ app.whenReady().then(async () => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("window-all-closed", function () {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform == "darwin") {
+    Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenu()));
+  } else {
+    app.quit();
+  }
+});
+
+app.on("browser-window-created", function () {
+  // To re-enable DevTools menu item when a window opens
+  // Needs a slight delay so that the code can tell that a
+  // window has been opened an the DevTools menu item should
+  // be enabled.
+  if (datasette) {
+    setTimeout(() => {
+      Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenu()));
+    }, 300);
+  }
 });
 
 let serverHasStarted = false;
