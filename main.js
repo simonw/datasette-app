@@ -169,7 +169,7 @@ class DatasetteServer {
       "2000",
       "--setting",
       "facet_time_limit_ms",
-      "1000",
+      "3000",
       "--setting",
       "max_csv_mb",
       "0",
