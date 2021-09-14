@@ -737,7 +737,7 @@ function buildMenu() {
             dialog
               .showMessageBox({
                 type: "info",
-                message: "About Datasette",
+                message: `Datasette Desktop ${app.getVersion()}`,
                 detail: await datasette.about(),
                 buttons: buttons,
               })
