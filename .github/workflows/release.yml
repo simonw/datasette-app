@@ -45,7 +45,7 @@ jobs:
       - name: Create zip file
         run: |
           cd dist/mac
-          ditto -c -k --keepParent Datasette.app Datasette.app.zip
+          ditto -c -k --keepParent Datasette.app Datasette-mac.app.zip
       - name: Upload release attachment
         uses: actions/github-script@v4
         with:
@@ -65,5 +65,5 @@ jobs:
               repo: context.repo.repo,
               release_id: release.data.id,
               name: "Datasette.app.zip",
-              data: await fs.readFileSync("dist/mac/Datasette.app.zip")
+              data: await fs.readFileSync("dist/mac/Datasette-mac.app.zip")
             });
