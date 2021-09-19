@@ -65,5 +65,5 @@ jobs:
               repo: context.repo.repo,
               release_id: release.data.id,
               name: "Datasette.app.zip",
-              data: await fs.readFileSync("dist/mac/Datasette-mac.app.zip")
+              data: fs.readFileSync("dist/mac/Datasette-mac.app.zip")
             });
