@@ -54,7 +54,7 @@
   "author": "Simon Willison",
   "license": "Apache-2.0",
   "devDependencies": {
-    "electron": "^13.2.1",
+    "electron": "^15.5.5",
     "electron-builder": "^22.11.7",
     "electron-notarize": "^1.1.1",
     "mocha": "^9.1.0",
