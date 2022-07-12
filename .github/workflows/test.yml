@@ -31,14 +31,10 @@ jobs:
         run: |
           ./download-python.sh
       - name: Run tests
-        run: npx xvfb-maybe -- npm test
+        run: npm test
         timeout-minutes: 5
-      - name: tmate on failure
-        uses: mxschmitt/action-tmate@v3
-        if: failure()
-      - name: Upload video if tests failed
+      - name: Upload test videos
         uses: actions/upload-artifact@v3
-        if: failure()
         with:
           name: test-videos
           path: test-videos/
