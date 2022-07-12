@@ -5,3 +5,4 @@ dist
 *.egg-info
 *.tar.gz
 python
+test-videos
