@@ -6,6 +6,7 @@ async function sleep(ms) {
 }
 
 test('App launches and quits', async () => {
+  test.setTimeout(0);
   const app = await _electron.launch({
     args: ['main.js'],
     recordVideo: {dir: 'test-videos'}
