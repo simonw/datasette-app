@@ -1,7 +1,7 @@
 const { _electron: electron } = require('playwright');
 
 describe("Application launch", function () {
-  this.timeout(10000);
+  this.timeout(30000);
 
   beforeEach(async function () {
     this.app = await electron.launch({ args: ['main.js'] });
