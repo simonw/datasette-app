@@ -6,7 +6,7 @@
   "main": "main.js",
   "scripts": {
     "start": "DEBUGMENU=1 electron --trace-warnings --inspect=5858 .",
-    "test": "mocha",
+    "test": "playwright test",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --publish never"
   },
@@ -54,10 +54,10 @@
   "author": "Simon Willison",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@playwright/test": "^1.23.2",
     "electron": "^19.0.8",
     "electron-builder": "^22.11.7",
     "electron-notarize": "^1.1.1",
-    "mocha": "^9.1.0",
     "playwright": "^1.23.2",
     "xvfb-maybe": "^0.2.1"
   },
