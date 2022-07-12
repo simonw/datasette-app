@@ -31,7 +31,7 @@ jobs:
         run: |
           ./download-python.sh
       - name: Run tests
-        run: npm test
+        run: npx xvfb-maybe -- npm test
         timeout-minutes: 5
       - name: Build distribution
         if: github.ref == 'refs/heads/main'

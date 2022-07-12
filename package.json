@@ -58,7 +58,8 @@
     "electron-builder": "^22.11.7",
     "electron-notarize": "^1.1.1",
     "mocha": "^9.1.0",
-    "playwright": "^1.23.2"
+    "playwright": "^1.23.2",
+    "xvfb-maybe": "^0.2.1"
   },
   "dependencies": {
     "electron-prompt": "^1.6.2",
