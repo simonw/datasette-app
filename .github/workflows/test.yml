@@ -33,6 +33,11 @@ jobs:
       - name: Run tests
         run: npx xvfb-maybe -- npm test
         timeout-minutes: 5
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: test-videos
+          path: test-videos/
       - name: Build distribution
         if: github.ref == 'refs/heads/main'
         env:
