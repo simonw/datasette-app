@@ -34,6 +34,7 @@ jobs:
         run: npm test
         timeout-minutes: 5
       - name: Build distribution
+        if: github.ref == 'refs/heads/master'
         env:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
@@ -41,13 +42,16 @@ jobs:
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
         run: npm run dist
       - name: Create zip file
+        if: github.ref == 'refs/heads/master'
         run: |
           cd dist/mac
           ditto -c -k --keepParent Datasette.app Datasette.app.zip
       - name: And a README (to work around GitHub double-zips)
+        if: github.ref == 'refs/heads/master'
         run: |
           echo "More information: https://datasette.io" > dist/mac/README.txt
       - name: Upload artifact
+        if: github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@v2
         with:
           name: Datasette-macOS
