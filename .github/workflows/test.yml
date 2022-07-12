@@ -31,6 +31,12 @@ jobs:
         run: |
           ./download-python.sh
       - name: Run tests
+        id: firstTest
+        run: npm test
+        timeout-minutes: 5
+        continue-on-error: true
+      - name: Retry tests once if they fail
+        if: steps.firstTest.outcome == 'failure'
         run: npm test
         timeout-minutes: 5
       - name: Upload test videos
