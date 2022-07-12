@@ -33,7 +33,11 @@ jobs:
       - name: Run tests
         run: npx xvfb-maybe -- npm test
         timeout-minutes: 5
-      - uses: actions/upload-artifact@v3
+      - name: tmate on failure
+        uses: mxschmitt/action-tmate@v3
+        if: failure()
+      - name: Upload video if tests failed
+        uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: test-videos
