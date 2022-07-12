@@ -13,7 +13,7 @@ test('App launches and quits', async () => {
   const window = await app.firstWindow();
   await expect(await window.title()).toContain('Loading');
   await window.waitForSelector('#run-sql-link', {
-    timeout: 30000
+    timeout: 90000
   });
   await sleep(1000);
   await app.close();
