@@ -1,6 +1,6 @@
 {
   "name": "datasette-app",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "productName": "Datasette",
   "description": "An Electron app that wraps Datasette",
   "main": "main.js",
