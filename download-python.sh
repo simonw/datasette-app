@@ -1,6 +1,6 @@
 #!/bin/bash
-release_date="20210724"
-filename="cpython-3.9.6-x86_64-apple-darwin-install_only-20210724T1424.tar.gz"
+release_date="20220802"
+filename="cpython-3.10.6+20220802-x86_64-apple-darwin-install_only.tar.gz"
 
 standalone_python="python/"
 
@@ -9,5 +9,5 @@ if [ ! -d "$standalone_python" ]; then
     tar -xzvf ${filename}                                                                          
     rm -rf ${filename}
     # Now delete the test/ folder, saving about 23MB of disk space
-    rm -rf python/lib/python3.9/test
+    rm -rf python/lib/python3.10/test
 fi
