@@ -54,16 +54,16 @@
   "author": "Simon Willison",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@playwright/test": "^1.23.2",
-    "electron": "^19.0.8",
-    "electron-builder": "^22.11.7",
-    "electron-notarize": "^1.1.1",
-    "playwright": "^1.23.2"
+    "@playwright/test": "^1.25.2",
+    "electron": "^20.1.3",
+    "electron-builder": "^23.3.3",
+    "electron-notarize": "^1.2.1",
+    "playwright": "^1.25.2"
   },
   "dependencies": {
-    "electron-prompt": "^1.6.2",
-    "electron-request": "1.7.1",
-    "portfinder": "^1.0.28",
+    "electron-prompt": "^1.7.0",
+    "electron-request": "1.8.1",
+    "portfinder": "^1.0.32",
     "update-electron-app": "^2.0.1"
   }
 }
