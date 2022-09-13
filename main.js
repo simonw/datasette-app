@@ -369,9 +369,9 @@ class DatasetteServer {
     let shouldCreateVenv = true;
     if (fs.existsSync(venv_dir)) {
       // Check Python interpreter still works, using
-      // ~/.datasette-app/venv/bin/python3.9 --version
+      // ~/.datasette-app/venv/bin/python3.10 --version
       // See https://github.com/simonw/datasette-app/issues/89
-      const venv_python = path.join(venv_dir, "bin", "python3.9");
+      const venv_python = path.join(venv_dir, "bin", "python3.10");
       try {
         await this.execCommand(venv_python, ["--version"]);
         shouldCreateVenv = false;
@@ -453,9 +453,9 @@ class DatasetteServer {
 function findPython() {
   const possibilities = [
     // In packaged app
-    path.join(process.resourcesPath, "python", "bin", "python3.9"),
+    path.join(process.resourcesPath, "python", "bin", "python3.10"),
     // In development
-    path.join(__dirname, "python", "bin", "python3.9"),
+    path.join(__dirname, "python", "bin", "python3.10"),
   ];
   for (const path of possibilities) {
     if (fs.existsSync(path)) {
