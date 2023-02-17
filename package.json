@@ -38,6 +38,7 @@
     },
     "afterSign": "scripts/notarize.js",
     "extraResources": [
+      "preload.js",
       {
         "from": "python",
         "to": "python",
