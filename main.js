@@ -473,6 +473,7 @@ function windowOpts(extraOpts) {
     height: 600,
     webPreferences: {
       preload: path.join(__dirname, extraOpts.preload || "preload.js"),
+      sandbox: false,
     },
   };
   if (BrowserWindow.getFocusedWindow()) {
