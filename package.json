@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "electron-prompt": "^1.7.0",
-    "electron-request": "1.8.1",
+    "electron-request": "^1.8.2",
     "portfinder": "^1.0.32",
     "update-electron-app": "^2.0.1"
   }
