@@ -61,3 +61,9 @@ Then `cd` into that directory and run the following:
 This will install the plugin into your Datasette Desktop environment, such that any edits you make to the files in that directory will be picked up the next time the embedded Datasette server is restarted.
 
 You can restart the server either by quitting and restarting the Datasette Desktop application, or by enabling the Debug menu ("Datasette -> About Datasette -> Enable Debug Menu") and then using "Debug -> Restart Server".
+
+## Release process
+
+To ship a new release, increment the version number in `package.json` and then [create a new release](https://github.com/simonw/datasette-app/releases/new) with a matching tag.
+
+Then [run a deploy](https://github.com/simonw/datasette.io/actions/workflows/deploy.yml) of [datasette.io](https://datasette.io/) to update the latest release link that is displayed on the [datasette.io/desktop](https://datasette.io/desktop) page.
