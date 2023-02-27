@@ -15,6 +15,7 @@
     "files": [
       "*.js",
       "*.html",
+      "preload.js",
       "**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
@@ -54,7 +55,6 @@
     },
     "afterSign": "scripts/notarize.js",
     "extraResources": [
-      "preload.js",
       {
         "from": "python",
         "to": "python",
