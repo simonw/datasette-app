@@ -10,8 +10,8 @@ The first time you launch the app it will install the latest version of Datasett
 
 ## Application features
 
-- Includes a full copy of Python which stays separate from any other Python versions you may have installed
-- Installs the latest Datasette release the first time it runs
+- Bundles [uv](https://github.com/astral-sh/uv), which installs a standalone copy of Python (kept separate from any other Python versions you may have installed) the first time the app runs
+- Installs Datasette (currently pinned to `1.0a36`) plus a set of plugins into a dedicated virtual environment the first time it runs
 - The application can open existing SQLite database files or read CSV files into an in-memory database
 - It can also create a new, empty SQLite database file and create tables in that database by importing CSV data
 - By default the server only accepts connections from your computer, but you can use "File -> Access Control -> Anyone on my networks" to make it visible to other computers on your network (or devices on your [Tailscale](https://tailscale.com/) network).
@@ -21,20 +21,27 @@ The first time you launch the app it will install the latest version of Datasett
 
 The app consists of two parts: the Electron app, and a custom Datasette plugin called [datasette-app-support](https://github.com/simonw/datasette-app-support).
 
+Requirements: macOS 12 (Monterey) or later on Apple Silicon (arm64), and [Node.js](https://nodejs.org/) 20 or later.
+
 You can install a development version of the app like so:
 
-    # Clone the repo
+    # Clone this repo AND the datasette-app-support plugin as siblings.
+    # The app installs the plugin from ../datasette-app-support, so both
+    # directories must be present next to each other:
     git clone https://github.com/simonw/datasette-app
+    git clone https://github.com/simonw/datasette-app-support
     cd datasette-app
-    
-    # Download standalone Python
-    ./download-python.sh
-    
+
+    # Download the bundled `uv` binary (macOS arm64):
+    ./download-uv.sh
+
     # Install Electron dependencies and start it running:
     npm install
     npm start
 
-When the app first starts up it will create a Python virtual environment in `~/.datasette-app/venv` and install both Datasette and the `datasette-app-support` plugin into that environment.
+When the app first starts up it uses `uv` to install a standalone Python 3.13, create a virtual environment in `~/.datasette-app/venv`, and install Datasette plus the `datasette-app-support` plugin into that environment. The standalone Python lives in `~/.datasette-app/python`, so removing `~/.datasette-app` fully resets it.
+
+The `datasette-app-support` install location is resolved in this order: the `DATASETTE_APP_SUPPORT_PATH` environment variable, then `../datasette-app-support`, then a vendored `./datasette-app-support`, then (once published) PyPI. Set `DATASETTE_APP_SUPPORT_PATH` to point at a checkout elsewhere if you prefer.
 
 To run the Electron tests:
 

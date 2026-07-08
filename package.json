@@ -47,17 +47,20 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "binaries": [
-        "./dist/mac/Datasette.app/Contents/Resources/python/bin/python3.9",
-        "./dist/mac/Datasette.app/Contents/Resources/python/lib/python3.9/lib-dynload/xxlimited.cpython-39-darwin.so",
-        "./dist/mac/Datasette.app/Contents/Resources/python/lib/python3.9/lib-dynload/_testcapi.cpython-39-darwin.so"
-      ]
+      "target": [
+        {
+          "target": "default",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "minimumSystemVersion": "12.0"
     },
-    "afterSign": "scripts/notarize.js",
     "extraResources": [
       {
-        "from": "python",
-        "to": "python",
+        "from": "uv",
+        "to": "uv",
         "filter": [
           "**/*"
         ]
@@ -70,17 +73,18 @@
   ],
   "author": "Simon Willison",
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
-    "@playwright/test": "^1.25.2",
-    "electron": "^20.1.3",
-    "electron-builder": "^23.3.3",
-    "electron-notarize": "^1.2.1",
-    "playwright": "^1.25.2"
+    "@playwright/test": "^1.61.0",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.0.0",
+    "playwright": "^1.61.0"
   },
   "dependencies": {
     "electron-prompt": "^1.7.0",
-    "electron-request": "^1.8.2",
-    "portfinder": "^1.0.32",
-    "update-electron-app": "^2.0.1"
+    "portfinder": "^1.0.38",
+    "update-electron-app": "^3.0.0"
   }
 }
