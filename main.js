@@ -52,8 +52,13 @@ const minPackageVersions = {
   "datasette-vega": "0.6.2",
   "datasette-cluster-map": "0.17.1",
   "datasette-pretty-json": "0.2.1",
-  "datasette-edit-schema": "0.4",
-  "datasette-configure-fts": "1.1",
+  // These two need Datasette 1.0-compatible releases, which are currently
+  // pre-releases. Naming a pre-release in the ">=" specifier is what allows
+  // uv/pip to select it (otherwise pre-releases are skipped). Earlier stable
+  // releases (0.7.1 / 1.1.4) call the removed datasette.permission_allowed()
+  // method and crash on 1.0a36.
+  "datasette-edit-schema": "0.8a5",
+  "datasette-configure-fts": "1.2a0",
   "datasette-leaflet": "0.2.2",
 };
 
