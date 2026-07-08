@@ -1,0 +1,46 @@
+<p class="custom-sort-by">Sort by
+{% for column in display_columns %}
+{% if column.name in ("stargazers_count", "downloads_this_week", "latest_release_at") %}
+    {% if column.name == sort_desc %}
+      <a href="{{ path_with_replaced_args(request, {'_sort': column.name, '_sort_desc': None, '_next': None}) }}" rel="nofollow">{{ column.name }}&nbsp;▲</a>
+    {% else %}
+      <a href="{{ path_with_replaced_args(request, {'_sort_desc': column.name, '_sort': None, '_next': None}) }}" rel="nofollow">{{ column.name }}{% if column.name == sort %}&nbsp;▼{% endif %}</a>
+    {% endif %}
+    <span class="middot">&middot;</span>
+  {% endif %}
+{% endfor %}
+</p>
+
+{% if not total_plugin_count %}
+  <p style="border: 1px solid black; padding: 0.5em"><strong>Could not access plugins</strong> - check your internet connection and restart this application.</p>
+{% endif %}
+
+{% if total_plugin_count and not display_rows %}
+  <p><strong><a href="?_facet=installed&_facet=upgrade">Show all plugins</a></strong></p>
+{% endif %}
+
+{% for row in display_rows %}
+<div class="plugin-row">
+  {% if row.usesCustomOpenGraphImage %}
+  <img src="{{ row.openGraphImageUrl }}">
+{% endif %}
+<h2>{{ row.name }}</h2>
+{% if row.description %}<p>{{ row.description }}</p>{% endif %}
+<p><a href="https://datasette.io/plugins/{{ row.name }}">{{ row.name }} documentation</a></p>
+<p><strong>Downloads this week:</strong> {{ row.downloads_this_week }} &nbsp; <strong>Stars:</strong> {{ row.stargazers_count }}</p>
+<p><strong>Latest release:</strong> {{ row.tag_name }} on {{ prettydate(row.latest_release_at) }}</p>
+{% if row.installed == "installed" %}
+  <p><strong>{{ row.installed_version }} currently installed</strong>{% if row.is_default %} (default plugin){% endif %}</p>
+  {% if actor.id == "root" and row.upgrade == "upgrade available" %}
+    <p><a class="plugin-button upgrade-plugin-button" data-plugin="{{ row.name }}" data-pluginversion="{{ row.tag_name }}" href="#">Upgrade to {{ row.tag_name }}</a></p>
+  {% endif %}
+  {% if actor.id == "root" and not row.is_default %}
+    <p><a class="plugin-button uninstall-plugin-button" data-plugin="{{ row.name }}" data-pluginversion="{{ row.tag_name }}" href="#">Uninstall {{ row.tag_name }}</a></p>
+  {% endif %}
+{% else %}
+  {% if actor.id == "root" %}
+    <p><a class="plugin-button install-plugin-button" data-plugin="{{ row.name }}" data-pluginversion="{{ row.tag_name }}" href="#">Install plugin: {{ row.name }}</a></p>
+  {% endif %}
+{% endif %}
+</div>
+{% endfor %}

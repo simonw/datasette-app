@@ -12,11 +12,13 @@
   },
   "build": {
     "appId": "io.datasette.app",
+    "beforePack": "./scripts/before-pack.js",
     "files": [
       "*.js",
       "*.html",
       "preload.js",
       "**/*",
+      "!plugins",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -63,6 +65,13 @@
         "to": "uv",
         "filter": [
           "**/*"
+        ]
+      },
+      {
+        "from": "build/app-support-wheel",
+        "to": "datasette-app-support",
+        "filter": [
+          "*.whl"
         ]
       }
     ]

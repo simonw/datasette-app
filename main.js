@@ -557,20 +557,31 @@ function uvEnv() {
 // datasette-app and datasette-app-support directories present - copy both
 // over, not just this one.
 function appSupportSource() {
+  // An explicit override wins, so a developer can point at a checkout of the
+  // plugin elsewhere on disk.
   if (
     process.env.DATASETTE_APP_SUPPORT_PATH &&
     fs.existsSync(process.env.DATASETTE_APP_SUPPORT_PATH)
   ) {
     return process.env.DATASETTE_APP_SUPPORT_PATH;
   }
-  const devPath = path.join(__dirname, "..", "datasette-app-support");
+  // Packaged app: install the prebuilt wheel that scripts/before-pack.js
+  // builds into resources at package time (see build.extraResources). A wheel
+  // is used rather than the source tree because installing from source builds
+  // in place, and a signed .app bundle's resources are read-only.
+  const wheelDir = path.join(process.resourcesPath, "datasette-app-support");
+  if (fs.existsSync(wheelDir)) {
+    const wheel = fs.readdirSync(wheelDir).find((f) => f.endsWith(".whl"));
+    if (wheel) {
+      return path.join(wheelDir, wheel);
+    }
+  }
+  // Development: install straight from the vendored source tree.
+  const devPath = path.join(__dirname, "plugins", "datasette-app-support");
   if (fs.existsSync(devPath)) {
     return devPath;
   }
-  const vendoredPath = path.join(__dirname, "datasette-app-support");
-  if (fs.existsSync(vendoredPath)) {
-    return vendoredPath;
-  }
+  // Last resort, should never be hit: the plugin is not published to PyPI.
   return "datasette-app-support>=0.12.0";
 }
 
