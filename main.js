@@ -6,10 +6,10 @@ const {
   dialog,
   shell,
   ipcMain,
+  net,
 } = require("electron");
 const EventEmitter = require("events");
 const crypto = require("crypto");
-const request = require("electron-request");
 const path = require("path");
 const os = require("os");
 const cp = require("child_process");
@@ -22,23 +22,43 @@ const util = require("util");
 const execFile = util.promisify(cp.execFile);
 const mkdir = util.promisify(fs.mkdir);
 
-require("update-electron-app")({
-  updateInterval: "1 hour",
-});
+// update-electron-app talks to the update server and throws in dev / when
+// the app is not signed & packaged. Only wire it up for packaged builds,
+// and guard it in a try/catch so a failure here never blocks app startup.
+try {
+  if (app.isPackaged) {
+    const { updateElectronApp } = require("update-electron-app");
+    updateElectronApp({
+      updateInterval: "1 hour",
+    });
+  }
+} catch (e) {
+  console.error("Failed to initialize update-electron-app", e);
+}
 
 const RANDOM_SECRET = crypto.randomBytes(32).toString("hex");
 
 // 'SQLite format 3\0':
 const SQLITE_HEADER = Buffer.from("53514c69746520666f726d6174203300", "hex");
 
+// Datasette itself and the local datasette-app-support plugin are pinned/
+// resolved separately (see DATASETTE_VERSION and appSupportSource() below)
+// because they are not simple ">=" PyPI installs. This map covers only the
+// third-party plugins that ARE plain PyPI installs with a minimum version.
+const DATASETTE_VERSION = "1.0a36";
+const PYTHON_VERSION = "3.13";
+
 const minPackageVersions = {
-  datasette: "0.59",
-  "datasette-app-support": "0.11.8",
   "datasette-vega": "0.6.2",
   "datasette-cluster-map": "0.17.1",
   "datasette-pretty-json": "0.2.1",
-  "datasette-edit-schema": "0.4",
-  "datasette-configure-fts": "1.1",
+  // These two need Datasette 1.0-compatible releases, which are currently
+  // pre-releases. Naming a pre-release in the ">=" specifier is what allows
+  // uv/pip to select it (otherwise pre-releases are skipped). Earlier stable
+  // releases (0.7.1 / 1.1.4) call the removed datasette.permission_allowed()
+  // method and crash on 1.0a36.
+  "datasette-edit-schema": "0.8a5",
+  "datasette-configure-fts": "1.2a0",
   "datasette-leaflet": "0.2.2",
 };
 
@@ -118,7 +138,7 @@ class DatasetteServer {
     }
   }
   async about() {
-    const response = await request(
+    const response = await net.fetch(
       `http://localhost:${this.port}/-/versions.json`
     );
     const data = await response.json();
@@ -181,10 +201,24 @@ class DatasetteServer {
     return args;
   }
   serverEnv() {
+    // Preserve the same set of default plugin names as before, even though
+    // datasette and datasette-app-support are no longer part of
+    // minPackageVersions (they're handled separately in
+    // ensurePackagesInstalled).
+    const pluginNames = [
+      "datasette",
+      "datasette-app-support",
+      "datasette-vega",
+      "datasette-cluster-map",
+      "datasette-pretty-json",
+      "datasette-edit-schema",
+      "datasette-configure-fts",
+      "datasette-leaflet",
+    ];
     return {
       DATASETTE_API_TOKEN: this.apiToken,
       DATASETTE_SECRET: RANDOM_SECRET,
-      DATASETTE_DEFAULT_PLUGINS: Object.keys(minPackageVersions).join(" "),
+      DATASETTE_DEFAULT_PLUGINS: pluginNames.join(" "),
     };
   }
   async startOrRestart() {
@@ -244,7 +278,7 @@ class DatasetteServer {
   }
 
   async apiRequest(path, body) {
-    return await request(`http://localhost:${this.port}${path}`, {
+    return await net.fetch(`http://localhost:${this.port}${path}`, {
       method: "POST",
       body: JSON.stringify(body),
       headers: {
@@ -253,14 +287,23 @@ class DatasetteServer {
     });
   }
 
-  async execCommand(command, args) {
+  async execCommand(command, args, opts) {
+    opts = opts || {};
+    // Capture the ambient env here, outside the Promise executor below,
+    // because that executor declares its own local `process` (the spawned
+    // child) which shadows the global `process` for its entire scope and
+    // would otherwise throw "Cannot access 'process' before initialization".
+    const spawnOptions = {};
+    if (opts.env) {
+      spawnOptions.env = { ...process.env, ...opts.env };
+    }
     return new Promise((resolve, reject) => {
       // Use spawn() not execFile() so we can tail stdout/stderr
       console.log(command, args);
       // I tried process.hrtime() here but consistently got a
       // "Cannot access 'process' before initialization" error
       const start = new Date().valueOf(); // millisecond timestamp
-      const process = cp.spawn(command, args);
+      const process = cp.spawn(command, args, spawnOptions);
       const collectedErr = [];
       this.processLog({
         type: "start",
@@ -315,44 +358,30 @@ class DatasetteServer {
   }
 
   async installPlugin(plugin) {
-    const pip_binary = path.join(
-      process.env.HOME,
-      ".datasette-app",
-      "venv",
-      "bin",
-      "pip"
+    const venv_dir = venvDir();
+    await this.execCommand(
+      findUv(),
+      ["pip", "install", "--python", venv_dir, plugin],
+      { env: uvEnv() }
     );
-    await this.execCommand(pip_binary, [
-      "install",
-      plugin,
-      "--disable-pip-version-check",
-    ]);
   }
 
   async uninstallPlugin(plugin) {
-    const pip_binary = path.join(
-      process.env.HOME,
-      ".datasette-app",
-      "venv",
-      "bin",
-      "pip"
+    const venv_dir = venvDir();
+    await this.execCommand(
+      findUv(),
+      ["pip", "uninstall", "--python", venv_dir, plugin],
+      { env: uvEnv() }
     );
-    await this.execCommand(pip_binary, [
-      "uninstall",
-      plugin,
-      "--disable-pip-version-check",
-      "-y",
-    ]);
   }
 
   async packageVersions() {
     const venv_dir = await this.ensureVenv();
-    const pip_path = path.join(venv_dir, "bin", "pip");
-    const versionsProcess = await execFile(pip_path, [
-      "list",
-      "--format",
-      "json",
-    ]);
+    const versionsProcess = await execFile(
+      findUv(),
+      ["pip", "list", "--python", venv_dir, "--format", "json"],
+      { env: { ...process.env, ...uvEnv() } }
+    );
     const versions = {};
     for (const item of JSON.parse(versionsProcess.stdout)) {
       versions[item.name] = item.version;
@@ -361,47 +390,71 @@ class DatasetteServer {
   }
 
   async ensureVenv() {
-    const datasette_app_dir = path.join(process.env.HOME, ".datasette-app");
-    const venv_dir = path.join(datasette_app_dir, "venv");
+    const datasette_app_dir = appDir();
+    const venv_dir = venvDir();
     if (!fs.existsSync(datasette_app_dir)) {
       await mkdir(datasette_app_dir);
     }
+    const uv = findUv();
+    const env = uvEnv();
     let shouldCreateVenv = true;
     if (fs.existsSync(venv_dir)) {
       // Check Python interpreter still works, using
-      // ~/.datasette-app/venv/bin/python3.9 --version
+      // ~/.datasette-app/venv/bin/python --version
       // See https://github.com/simonw/datasette-app/issues/89
-      const venv_python = path.join(venv_dir, "bin", "python3.9");
+      const venv_python = path.join(venv_dir, "bin", "python");
       try {
         await this.execCommand(venv_python, ["--version"]);
         shouldCreateVenv = false;
       } catch (e) {
-        fs.rmdirSync(venv_dir, { recursive: true });
+        fs.rmSync(venv_dir, { recursive: true, force: true });
       }
     }
     if (shouldCreateVenv) {
-      await this.execCommand(findPython(), ["-m", "venv", venv_dir]);
+      await this.execCommand(uv, ["python", "install", PYTHON_VERSION], {
+        env,
+      });
+      await this.execCommand(
+        uv,
+        [
+          "venv",
+          venv_dir,
+          "--python",
+          PYTHON_VERSION,
+          "--python-preference",
+          "only-managed",
+        ],
+        { env }
+      );
     }
     return venv_dir;
   }
 
   async ensurePackagesInstalled() {
     const venv_dir = await this.ensureVenv();
-    // Anything need installing or upgrading?
-    const needsInstall = [];
+    const uv = findUv();
+    const env = uvEnv();
+    // datasette itself is pinned to an exact version, and
+    // datasette-app-support is resolved to a local path (or, once
+    // published, a PyPI fallback) since it isn't a plain ">=" PyPI
+    // install. Everything else comes from minPackageVersions.
+    const packageSpecs = [
+      `datasette==${DATASETTE_VERSION}`,
+      appSupportSource(),
+    ];
     for (const [name, requiredVersion] of Object.entries(minPackageVersions)) {
-      needsInstall.push(`${name}>=${requiredVersion}`);
+      packageSpecs.push(`${name}>=${requiredVersion}`);
     }
-    const pip_path = path.join(venv_dir, "bin", "pip");
     try {
       await this.execCommand(
-        pip_path,
-        ["install"].concat(needsInstall).concat(["--disable-pip-version-check"])
+        uv,
+        ["pip", "install", "--python", venv_dir].concat(packageSpecs),
+        { env }
       );
     } catch (e) {
       dialog.showMessageBox({
         type: "error",
-        message: "Error running pip",
+        message: "Error running uv pip install",
         detail: e.toString(),
       });
     }
@@ -450,20 +503,86 @@ class DatasetteServer {
   }
 }
 
-function findPython() {
+function findUv() {
   const possibilities = [
     // In packaged app
-    path.join(process.resourcesPath, "python", "bin", "python3.9"),
+    path.join(process.resourcesPath, "uv", "uv"),
     // In development
-    path.join(__dirname, "python", "bin", "python3.9"),
+    path.join(__dirname, "uv", "uv"),
   ];
-  for (const path of possibilities) {
-    if (fs.existsSync(path)) {
-      return path;
+  for (const p of possibilities) {
+    if (fs.existsSync(p)) {
+      return p;
     }
   }
-  console.log("Could not find python3, checked", possibilities);
-  app.quit();
+  // Fall back to relying on uv being available on PATH
+  return "uv";
+}
+
+function appDir() {
+  return path.join(os.homedir() || process.env.HOME, ".datasette-app");
+}
+
+function venvDir() {
+  return path.join(appDir(), "venv");
+}
+
+// uv needs to know where to install/find managed Python versions. Keep it
+// scoped inside our app dir so it doesn't touch any system-wide uv cache.
+// UV_PYTHON_INSTALL_BIN=0 stops uv from writing a `python3.13` shim into the
+// user's ~/.local/bin (intrusive, and it errors noisily if one already
+// exists) - we only ever use the interpreter via the venv, not from PATH.
+function uvEnv() {
+  return {
+    UV_PYTHON_INSTALL_DIR: path.join(appDir(), "python"),
+    UV_PYTHON_INSTALL_BIN: "0",
+  };
+}
+
+// The datasette-app-support plugin is a fork/port of datasette-app-support
+// that is not (yet) published to PyPI, so it can't be installed by name
+// like the other plugins. Resolve it, in priority order, to:
+//   1. process.env.DATASETTE_APP_SUPPORT_PATH, if set and it exists
+//   2. ../datasette-app-support next to this repo (the dev/sandbox layout
+//      used here: datasette-app and datasette-app-support checked out as
+//      sibling directories - see /home/sprite/datasette-app-support)
+//   3. ./datasette-app-support inside this repo (a vendored copy, e.g. for
+//      packaged builds)
+//   4. otherwise fall back to a PyPI version spec, for once it's published
+// When this resolves to a local directory, that path is passed straight to
+// `uv pip install` (a plain, non-editable path install), which uv handles
+// natively without needing a -e flag.
+//
+// NOTE for macOS: to build/run this app from source you must have BOTH the
+// datasette-app and datasette-app-support directories present - copy both
+// over, not just this one.
+function appSupportSource() {
+  // An explicit override wins, so a developer can point at a checkout of the
+  // plugin elsewhere on disk.
+  if (
+    process.env.DATASETTE_APP_SUPPORT_PATH &&
+    fs.existsSync(process.env.DATASETTE_APP_SUPPORT_PATH)
+  ) {
+    return process.env.DATASETTE_APP_SUPPORT_PATH;
+  }
+  // Packaged app: install the prebuilt wheel that scripts/before-pack.js
+  // builds into resources at package time (see build.extraResources). A wheel
+  // is used rather than the source tree because installing from source builds
+  // in place, and a signed .app bundle's resources are read-only.
+  const wheelDir = path.join(process.resourcesPath, "datasette-app-support");
+  if (fs.existsSync(wheelDir)) {
+    const wheel = fs.readdirSync(wheelDir).find((f) => f.endsWith(".whl"));
+    if (wheel) {
+      return path.join(wheelDir, wheel);
+    }
+  }
+  // Development: install straight from the vendored source tree.
+  const devPath = path.join(__dirname, "plugins", "datasette-app-support");
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+  // Last resort, should never be hit: the plugin is not published to PyPI.
+  return "datasette-app-support>=0.12.0";
 }
 
 function windowOpts(extraOpts) {
@@ -1030,15 +1149,7 @@ function buildMenu() {
             for (const [key, value] of Object.entries(datasette.serverEnv())) {
               command.push(`${key}="${value}"`);
             }
-            command.push(
-              path.join(
-                process.env.HOME,
-                ".datasette-app",
-                "venv",
-                "bin",
-                "datasette"
-              )
-            );
+            command.push(path.join(venvDir(), "bin", "datasette"));
             command.push(datasette.serverArgs().join(" "));
             dialog
               .showMessageBox({
@@ -1089,10 +1200,7 @@ function buildMenu() {
                   BrowserWindow.getAllWindows().forEach((window) =>
                     window.close()
                   );
-                  fs.rmdirSync(
-                    path.join(process.env.HOME, ".datasette-app", "venv"),
-                    { recursive: true }
-                  );
+                  fs.rmSync(venvDir(), { recursive: true, force: true });
                   createLoadingWindow();
                   await datasette.startOrRestart();
                   datasette.openPath("/", {

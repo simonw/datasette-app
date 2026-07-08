@@ -29,9 +29,9 @@ jobs:
             ${{ runner.os }}-pip-
       - name: Install Node dependencies
         run: npm install
-      - name: Download standalone Python
+      - name: Download bundled uv
         run: |
-          ./download-python.sh
+          ./download-uv.sh
       - name: Run tests
         run: npm test
         timeout-minutes: 5

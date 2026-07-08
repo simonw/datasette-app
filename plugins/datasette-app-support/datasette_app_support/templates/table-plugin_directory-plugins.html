@@ -1,0 +1,96 @@
+{% extends "default:table.html" %}
+
+{% block extra_head %}
+<style type="text/css">
+.filter-row,
+.export-links,
+.suggested-facets,
+.not-underlined,
+.custom-sort-by span:last-of-type {
+  display: none;
+}
+.custom-sort-by a {
+  text-decoration: none;
+}
+h3 {
+  margin-bottom: 1em;
+}
+.plugin-row {
+  clear: both;
+  border-bottom: 1px solid #0e0c82;
+  margin: 0.5em 0;
+  padding-bottom: 0.5em;
+  overflow: hidden;
+}
+.plugin-row h2 {
+  margin-top: 0;
+}
+.plugin-row img {
+  max-width: 40%;
+  float: right;
+}
+.plugin-button {
+  box-shadow: 0px 4px 14px -7px #0e0c82;
+  background: linear-gradient(to bottom, #8484f4 5%, rgb(94, 92, 172) 100%);
+  background-color: #8484f4;
+  border-radius: 8px;
+  display: inline-block;
+  cursor: pointer;
+  color: white;
+  font-size: 0.8em;
+  font-weight: bold;
+  padding: 0.5em 1em;
+  margin-right: 0.5em;
+  text-decoration: none;
+  text-shadow: 0px 1px 0px #3d768a;
+}
+.plugin-button:link,
+.plugin-button:visited,
+.plugin-button:hover
+.plugin-button:focus {
+  color: white;
+  text-decoration: none;
+}
+.plugin-button:active {
+  position:relative;
+  top: 1px;
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Hide upgrade facet if no upgrades available
+  var div = document.getElementById("facet-upgrade");
+  if (!div.querySelectorAll("ul li").length) {
+    div.parentNode.removeChild(div);
+  }
+  // Configure install and upgrade buttons
+  Array.from(document.querySelectorAll(".install-plugin-button")).forEach(button => {
+    button.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.target.style.pointerEvents = 'none';
+      datasetteApp.installPlugin(ev.target.dataset.plugin, ev.target);
+    });
+  });
+  Array.from(document.querySelectorAll(".upgrade-plugin-button")).forEach(button => {
+    button.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.target.style.pointerEvents = 'none';
+      datasetteApp.installPlugin(
+        `${ev.target.dataset.plugin}==${ev.target.dataset.pluginversion}`,
+        ev.target
+      );
+    });
+  });
+  Array.from(document.querySelectorAll(".uninstall-plugin-button")).forEach(button => {
+    button.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.target.style.pointerEvents = 'none';
+      datasetteApp.uninstallPlugin(
+        ev.target.dataset.plugin,
+        ev.target
+      );
+    });
+  });
+});
+</script>
+{% endblock %}

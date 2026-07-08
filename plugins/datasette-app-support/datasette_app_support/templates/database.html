@@ -1,0 +1,19 @@
+{% extends "default:database.html" %}
+
+{% block description_source_license %}
+{{ super() }}
+<div id="importCsvButton"></div>
+<script>
+if (datasetteApp && datasetteApp.importCsv) {
+  let form = document.createElement('form');
+  let button = document.createElement('button');
+  button.setAttribute("type", "button");
+  form.appendChild(button);
+  button.addEventListener("click", () => {
+    datasetteApp.importCsv({{ database|tojson }});
+  });
+  button.innerText = 'Import CSV';
+  document.getElementById("importCsvButton").appendChild(form);
+}
+</script>
+{% endblock %}
